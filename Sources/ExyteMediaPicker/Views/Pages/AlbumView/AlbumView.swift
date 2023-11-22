@@ -46,9 +46,13 @@ private extension AlbumView {
                     PermissionsActionView(action: .camera(action))
                 }
                 if viewModel.isLoading {
+                    Spacer()
+                    
                     ProgressView()
-                        .padding()
+                        .frame(width: 150, height: 150)
                         .tint(.white)
+                    
+                    Spacer()
                 } else if viewModel.assetMediaModels.isEmpty, !shouldShowLoadingCell {
                     Text("Não há albums disponíveis")
                         .font(.title3)
@@ -69,6 +73,7 @@ private extension AlbumView {
                             ZStack {
                                 Color.white.opacity(0.5)
                                 ProgressView()
+                                    .frame(width: 150, height: 150)
                                     .tint(.white)
                             }
                             .aspectRatio(1, contentMode: .fit)

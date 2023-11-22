@@ -22,9 +22,9 @@ struct AlbumsView: View {
     let massFilterClosure: MediaPicker.MassFilterClosure?
 
     @State private var showingLoadingCell = false
-
+    
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 100), spacing: 0, alignment: .top)]
+        Array(repeating: .init(.flexible(), spacing: 0), count: 2)
     }
     
     private var cellPadding: EdgeInsets {
@@ -38,9 +38,13 @@ struct AlbumsView: View {
                     PermissionsActionView(action: .library(action))
                 }
                 if viewModel.isLoading {
+                    Spacer()
+                    
                     ProgressView()
-                        .padding()
+                        .frame(width: 150, height: 150)
                         .tint(.white)
+                    
+                    Spacer()
                 } else if viewModel.albums.isEmpty {
                     Text("Não há albums disponíveis")
                         .font(.title3)

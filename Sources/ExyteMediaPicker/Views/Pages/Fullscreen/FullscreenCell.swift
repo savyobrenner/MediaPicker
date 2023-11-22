@@ -28,6 +28,7 @@ struct FullscreenCell: View {
                     }
                 } else {
                     ProgressView()
+                        .frame(width: 150, height: 150)
                         .tint(.white)
                 }
             }

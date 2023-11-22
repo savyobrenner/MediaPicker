@@ -30,8 +30,13 @@ struct MediaCell: View {
                         viewModel.togglePlay()
                     }
                 } else {
+                    Spacer()
+                    
                     ProgressView()
+                        .frame(width: 150, height: 150)
                         .tint(.white)
+                    
+                    Spacer()
                 }
             }
             .frame(width: g.size.width, height: g.size.height)
