@@ -43,7 +43,7 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
     private var albumSelectionBuilder: AlbumSelectionClosure? = nil
     private var cameraSelectionBuilder: CameraSelectionClosure? = nil
     private var cameraViewBuilder: CameraViewClosure? = nil
-    private var mediaTitle = "Photos"
+    private var mediaTitle = "Fotos"
 
     // MARK: - Customization
 
@@ -151,7 +151,13 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
         }
 
         if let albumSelectionBuilder = albumSelectionBuilder {
-            albumSelectionBuilder(ModeSwitcher(selection: modeBinding()), albumSelectionView, isInFullscreen)
+            albumSelectionBuilder(
+                ModeSwitcher(
+                selection: modeBinding(), 
+                mediaTitle: mediaTitle
+                ),
+                albumSelectionView, isInFullscreen
+            )
         } else {
             VStack(spacing: 0) {
                 if !isInFullscreen {

@@ -78,15 +78,30 @@ public struct AlbumSelectionView: View {
 public struct ModeSwitcher: View {
 
     @Binding var selection: Int
+    var mediaTitle: String
 
     public var body: some View {
         Picker("", selection: $selection) {
-            Text("Photos")
+            Text(mediaTitle)
                 .tag(0)
+                .modeSwitcherTextStyle(isSelected: selection == 0)
             Text("Albums")
                 .tag(1)
+                .modeSwitcherTextStyle(isSelected: selection == 1)
         }
         .pickerStyle(SegmentedPickerStyle())
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
+        .background(RoundedRectangle(cornerRadius: 8)
+            .stroke(Color.gray, lineWidth: 1)
+            .background(Color.clear))
+    }
+}
+
+extension View {
+    func modeSwitcherTextStyle(isSelected: Bool) -> some View {
+        self.foregroundColor(isSelected ? .white : Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
+            .padding()
+            .background(isSelected ? Color.blue : Color.clear)
+            .cornerRadius(8)
     }
 }

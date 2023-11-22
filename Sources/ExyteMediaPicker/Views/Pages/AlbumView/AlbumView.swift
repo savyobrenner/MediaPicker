@@ -48,8 +48,9 @@ private extension AlbumView {
                 if viewModel.isLoading {
                     ProgressView()
                         .padding()
+                        .foregroundColor(.white)
                 } else if viewModel.assetMediaModels.isEmpty, !shouldShowLoadingCell {
-                    Text("Empty data")
+                    Text("Não há albums disponíveis")
                         .font(.title3)
                         .foregroundColor(theme.main.text)
                 } else {
@@ -68,6 +69,7 @@ private extension AlbumView {
                             ZStack {
                                 Color.white.opacity(0.5)
                                 ProgressView()
+                                    .foregroundColor(.white)
                             }
                             .aspectRatio(1, contentMode: .fit)
                         }
@@ -130,6 +132,7 @@ private extension AlbumView {
         }
         .buttonStyle(MediaButtonStyle())
         .contentShape(Rectangle())
+        .padding()
 
         if selectionService.mediaSelectionLimit == 1 {
             imageButton
