@@ -41,6 +41,8 @@ struct MediaCell: View {
                 }
             }
         }
+        .cornerRadius(8)
+        .padding(1)
         .onDisappear {
             viewModel.onStop()
         }
