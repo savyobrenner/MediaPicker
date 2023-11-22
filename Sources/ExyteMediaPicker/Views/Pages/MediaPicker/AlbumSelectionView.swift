@@ -92,16 +92,16 @@ public struct ModeSwitcher: View {
         .pickerStyle(SegmentedPickerStyle())
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
         .background(RoundedRectangle(cornerRadius: 8)
-            .stroke(Color.gray, lineWidth: 1)
+            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
             .background(Color.clear))
     }
 }
 
 extension View {
     func modeSwitcherTextStyle(isSelected: Bool) -> some View {
-        self.foregroundColor(isSelected ? .white : Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
+        self.foregroundColor(isSelected ? .black : Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
             .padding()
-            .background(isSelected ? Color.blue : Color.clear)
+            .background(isSelected ? Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)) : Color.clear)
             .cornerRadius(8)
     }
 }

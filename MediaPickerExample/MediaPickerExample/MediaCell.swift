@@ -31,6 +31,7 @@ struct MediaCell: View {
                     }
                 } else {
                     ProgressView()
+                        .tint(.white)
                 }
             }
             .frame(width: g.size.width, height: g.size.height)

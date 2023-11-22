@@ -40,7 +40,7 @@ struct AlbumsView: View {
                 if viewModel.isLoading {
                     ProgressView()
                         .padding()
-                        .foregroundColor(.white)
+                        .tint(.white)
                 } else if viewModel.albums.isEmpty {
                     Text("Não há albums disponíveis")
                         .font(.title3)
