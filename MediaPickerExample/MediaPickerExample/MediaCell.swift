@@ -29,14 +29,10 @@ struct MediaCell: View {
                     VideoPlayer(player: player).onTapGesture {
                         viewModel.togglePlay()
                     }
-                } else {
-                    Spacer()
-                    
+                } else {                    
                     ProgressView()
                         .frame(width: 150, height: 150)
                         .tint(.white)
-                    
-                    Spacer()
                 }
             }
             .frame(width: g.size.width, height: g.size.height)

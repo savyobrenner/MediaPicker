@@ -46,13 +46,9 @@ private extension AlbumView {
                     PermissionsActionView(action: .camera(action))
                 }
                 if viewModel.isLoading {
-                    Spacer()
-                    
                     ProgressView()
                         .frame(width: 150, height: 150)
                         .tint(.white)
-                    
-                    Spacer()
                 } else if viewModel.assetMediaModels.isEmpty, !shouldShowLoadingCell {
                     Text("Não há albums disponíveis")
                         .font(.title3)
@@ -134,6 +130,7 @@ private extension AlbumView {
             }
         } label: {
             MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
+                .frame(width: 150, height: 150)
         }
         .buttonStyle(MediaButtonStyle())
         .contentShape(Rectangle())

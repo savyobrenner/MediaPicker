@@ -38,13 +38,9 @@ struct AlbumsView: View {
                     PermissionsActionView(action: .library(action))
                 }
                 if viewModel.isLoading {
-                    Spacer()
-                    
                     ProgressView()
                         .frame(width: 150, height: 150)
                         .tint(.white)
-                    
-                    Spacer()
                 } else if viewModel.albums.isEmpty {
                     Text("Não há albums disponíveis")
                         .font(.title3)

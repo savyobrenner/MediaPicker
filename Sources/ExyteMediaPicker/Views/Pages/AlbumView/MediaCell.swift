@@ -5,11 +5,11 @@
 import SwiftUI
 
 struct MediaCell: View {
-
+    
     @StateObject var viewModel: MediaViewModel
     
     @Environment(\.mediaPickerTheme) private var theme
-
+    
     var body: some View {
         ZStack {
             GeometryReader { geometry in
@@ -21,7 +21,7 @@ struct MediaCell: View {
             }
             .aspectRatio(1, contentMode: .fill)
             .clipped()
-
+            
             if let duration = viewModel.assetMediaModel.asset.formattedDuration {
                 VStack {
                     Spacer()
@@ -42,7 +42,7 @@ struct MediaCell: View {
             }
         }
         .cornerRadius(8)
-        .padding(1)
+        .padding(8)
         .onDisappear {
             viewModel.onStop()
         }
