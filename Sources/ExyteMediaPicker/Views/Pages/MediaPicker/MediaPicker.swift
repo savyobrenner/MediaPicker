@@ -43,6 +43,7 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
     private var albumSelectionBuilder: AlbumSelectionClosure? = nil
     private var cameraSelectionBuilder: CameraSelectionClosure? = nil
     private var cameraViewBuilder: CameraViewClosure? = nil
+    private var mediaTitle = "Photos"
 
     // MARK: - Customization
 
@@ -76,6 +77,7 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
 
     public init(isPresented: Binding<Bool>,
                 onChange: @escaping MediaPickerCompletionClosure,
+                mediaTitle: String = "Photos",
                 albumSelectionBuilder: AlbumSelectionClosure? = nil,
                 cameraSelectionBuilder: CameraSelectionClosure? = nil,
                 cameraViewBuilder: CameraViewClosure? = nil) {
@@ -88,6 +90,7 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
         self.albumSelectionBuilder = albumSelectionBuilder
         self.cameraSelectionBuilder = cameraSelectionBuilder
         self.cameraViewBuilder = cameraViewBuilder
+        self.mediaTitle = mediaTitle
     }
 
     public var body: some View {
@@ -235,7 +238,7 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
 
     var defaultHeaderView: some View {
         HStack {
-            Button("Cancel") {
+            Button("Cancelar") {
                 selectionService.removeAll()
                 cameraSelectionService.removeAll()
                 isPresented = false
@@ -251,17 +254,19 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
                         }
                     )
             ) {
-                Text("Photos")
+                Text(mediaTitle)
                     .tag(0)
+                    .foregroundColor(.init(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
                 Text("Albums")
                     .tag(1)
+                    .foregroundColor(.init(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
             }
             .pickerStyle(SegmentedPickerStyle())
             .frame(maxWidth: UIScreen.main.bounds.width / 2)
 
             Spacer()
 
-            Button("Done") {
+            Button("Feito") {
                 if selectionService.selected.isEmpty, let current = currentFullscreenMedia {
                     onChange([current])
                 }
