@@ -76,6 +76,7 @@ public struct AlbumSelectionView: View {
 }
 
 public struct ModeSwitcher: View {
+
     @Binding var selection: Int
     var mediaTitle: String
 
@@ -83,6 +84,7 @@ public struct ModeSwitcher: View {
         Picker("", selection: $selection) {
             Text(mediaTitle)
                 .tag(0)
+            
             Text("Albums")
                 .tag(1)
         }
@@ -90,19 +92,15 @@ public struct ModeSwitcher: View {
         .pickerStyle(SegmentedPickerStyle())
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
         .background(
-            selectedBackgroundView
-                .cornerRadius(8)
-        )
-        .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
+            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
+            .background(Color.clear)
         )
-    }
-
-    private var selectedBackgroundView: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .foregroundColor(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
-            .opacity(selection == 0 ? 1 : 0)
-            .animation(.easeInOut, value: selection)
+        .onAppear {
+            UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
+            UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)], for: .selected)
+            UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.95, green: 0.7, blue: 0.19, alpha: 1)], for: .normal)
+            UISegmentedControl.appearance().backgroundColor = .clear
+        }
     }
 }
