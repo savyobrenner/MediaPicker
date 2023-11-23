@@ -84,19 +84,21 @@ public struct ModeSwitcher: View {
         Picker("", selection: $selection) {
             Text(mediaTitle)
                 .tag(0)
-                .modeSwitcherTextStyle(isSelected: selection == 0)
+                .tint(.orange)
+//                .modeSwitcherTextStyle(isSelected: selection == 0)
             
             Text("Albums")
                 .tag(1)
-                .modeSwitcherTextStyle(isSelected: selection == 1)
+                .tint(.green)
+//                .modeSwitcherTextStyle(isSelected: selection == 1)
         }
         .pickerStyle(SegmentedPickerStyle())
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
-//        .background(
-//            RoundedRectangle(cornerRadius: 8)
-//            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
-//            .background(Color.clear)
-//        )
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
+            .background(Color.clear)
+        )
     }
 }
 
