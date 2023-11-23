@@ -78,7 +78,7 @@ private extension DefaultAlbumsProvider {
             }
             
             options.sortDescriptors = [
-                NSSortDescriptor(key: "startDate", ascending: true)
+                NSSortDescriptor(key: "creationDate", ascending: true)
             ]
             options.fetchLimit = 1
             let fetchResult = PHAsset.fetchAssets(in: collection, options: options)
@@ -87,7 +87,7 @@ private extension DefaultAlbumsProvider {
             }
             
             let preview = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: self.mediaSelectionType).first
-            let album = AlbumModel(preview: preview, source: collection)
+            let album = AlbumModel(preview: preview, source: collection, mediaType: self.mediaSelectionType)
             albums.append(album)
         }
         

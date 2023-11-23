@@ -15,6 +15,7 @@ public struct Album: Identifiable {
 struct AlbumModel {
     let preview: AssetMediaModel?
     let source: PHAssetCollection
+    let mediaType: MediaSelectionType
 }
 
 extension AlbumModel: Identifiable {
@@ -25,21 +26,29 @@ extension AlbumModel: Identifiable {
     public var title: String? {
         source.localizedTitle
     }
+    
+    var assetsQuantity: String? {
+        let fetchOptions = PHFetchOptions()
+
+        switch mediaType {
+        case .photo:
+            fetchOptions.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.image.rawValue)
+        case .video:
+            fetchOptions.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.video.rawValue)
+        case .photoAndVideo:
+            // Sem predicado para ambos os tipos
+            break
+        }
+
+        let fetchResult = PHAsset.fetchAssets(in: source, options: fetchOptions)
+        return "(\(fetchResult.count))"
+    }
 }
 
 extension AlbumModel: Equatable {}
 
 extension AlbumModel {
-    func fetchMediaCount(ofType mediaType: PHAssetMediaType) -> Int {
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "mediaType = %d", mediaType.rawValue)
-
-        let assets = PHAsset.fetchAssets(in: source, options: options)
-        return assets.count
-    }
-
-    func toAlbum(for mediaType: PHAssetMediaType) -> Album {
-        let count = fetchMediaCount(ofType: mediaType)
-        return Album(id: id, title: title, quantity: "(\(count))", preview: preview?.asset)
+    func toAlbum() -> Album {
+        Album(id: id, title: title, quantity: assetsQuantity, preview: preview?.asset)
     }
 }
