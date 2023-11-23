@@ -76,30 +76,31 @@ public struct AlbumSelectionView: View {
 }
 
 public struct ModeSwitcher: View {
+
     @Binding var selection: Int
     var mediaTitle: String
 
     public var body: some View {
-        HStack {
-            modeButton(title: mediaTitle, tag: 0)
-            modeButton(title: "Albums", tag: 1)
+        Picker("", selection: $selection) {
+            Text(mediaTitle)
+                .tag(0)
+                .modeSwitcherTextStyle(isSelected: selection == 0)
+            Text("Albums")
+                .tag(1)
+                .modeSwitcherTextStyle(isSelected: selection == 1)
         }
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
-        .padding(2)
-        .background(RoundedRectangle(cornerRadius: 8).stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 8)
+            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
+            .background(Color.clear))
     }
+}
 
-    func modeButton(title: String, tag: Int) -> some View {
-        Button(action: {
-            withAnimation {
-                selection = tag
-            }
-        }) {
-            Text(title)
-                .foregroundColor(selection == tag ? .black : Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
-                .padding()
-                .background(selection == tag ? Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)) : Color.clear)
-                .cornerRadius(8)
-        }
+extension View {
+    func modeSwitcherTextStyle(isSelected: Bool) -> some View {
+        self.foregroundColor(isSelected ? .black : Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
+            .padding()
+            .background(isSelected ? Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)) : Color.clear)
+            .cornerRadius(8)
     }
 }
