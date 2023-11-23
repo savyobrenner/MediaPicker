@@ -88,16 +88,19 @@ public struct ModeSwitcher: View {
             Text("Albums")
                 .tag(1)
         }
-        .colorMultiply(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
+//        .colorMultiply(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
         .pickerStyle(SegmentedPickerStyle())
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
-            .background(Color.clear)
-            .padding(-2)
-        )
+//        .background(
+//            RoundedRectangle(cornerRadius: 8)
+//            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
+//            .background(Color.clear)
+//            .padding(-2)
+//        )
         .onAppear {
+            UISegmentedControl.appearance().layer.borderWidth = 1
+            UISegmentedControl.appearance().layer.borderColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
+            UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
             UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)], for: .selected)
             UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)], for: .normal)
             UISegmentedControl.appearance().backgroundColor = .clear
