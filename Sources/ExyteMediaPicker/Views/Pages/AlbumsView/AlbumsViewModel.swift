@@ -31,7 +31,7 @@ final class AlbumsViewModel: ObservableObject {
                 self?.isLoading = false
             }
         
-        albumsProvider.reload()
+//        albumsProvider.reload()
     }
     
     func onStop() {
