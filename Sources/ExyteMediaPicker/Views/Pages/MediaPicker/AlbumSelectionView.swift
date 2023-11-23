@@ -97,7 +97,7 @@ public struct ModeSwitcher: View {
             .background(Color.clear)
         )
         .onAppear {
-            UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
+//            UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
             UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)], for: .selected)
             UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.95, green: 0.7, blue: 0.19, alpha: 1)], for: .normal)
             UISegmentedControl.appearance().backgroundColor = .clear
