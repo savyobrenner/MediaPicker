@@ -20,7 +20,7 @@ final class AllPhotosProvider: BaseMediasProvider {
     func reloadInternal() {
         let allPhotosOptions = PHFetchOptions()
         allPhotosOptions.sortDescriptors = [
-            NSSortDescriptor(key: "modificationDate", ascending: true)
+            NSSortDescriptor(key: "modificationDate", ascending: false)
         ]
         let allPhotos = PHAsset.fetchAssets(with: allPhotosOptions)
         let assets = MediasProvider.map(fetchResult: allPhotos, mediaSelectionType: selectionParamsHolder.mediaType)

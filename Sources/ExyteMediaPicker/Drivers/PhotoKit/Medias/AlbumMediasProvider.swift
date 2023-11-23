@@ -25,7 +25,7 @@ final class AlbumMediasProvider: BaseMediasProvider {
     func reloadInternal() {
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [
-            NSSortDescriptor(key: "modificationDate", ascending: true)
+            NSSortDescriptor(key: "modificationDate", ascending: false)
         ]
         let fetchResult = PHAsset.fetchAssets(in: album.source, options: fetchOptions)
         if fetchResult.count == 0 {
