@@ -76,7 +76,6 @@ public struct AlbumSelectionView: View {
 }
 
 public struct ModeSwitcher: View {
-
     @Binding var selection: Int
     var mediaTitle: String
 
@@ -84,28 +83,26 @@ public struct ModeSwitcher: View {
         Picker("", selection: $selection) {
             Text(mediaTitle)
                 .tag(0)
-                .modeSwitcherTextStyle(isSelected: selection == 0)
-            
             Text("Albums")
                 .tag(1)
-                .modeSwitcherTextStyle(isSelected: selection == 1)
         }
         .colorMultiply(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
         .pickerStyle(SegmentedPickerStyle())
         .frame(maxWidth: UIScreen.main.bounds.width / 2)
         .background(
+            selectedBackgroundView
+                .cornerRadius(8)
+        )
+        .overlay(
             RoundedRectangle(cornerRadius: 8)
-            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
-            .background(Color.clear)
+                .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
         )
     }
-}
 
-extension View {
-    func modeSwitcherTextStyle(isSelected: Bool) -> some View {
-        self.foregroundColor(isSelected ? .black : Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
-            .padding()
-            .background(isSelected ? Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)) : Color.clear)
-            .cornerRadius(8)
+    private var selectedBackgroundView: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .foregroundColor(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
+            .opacity(selection == 0 ? 1 : 0)
+            .animation(.easeInOut, value: selection)
     }
 }
