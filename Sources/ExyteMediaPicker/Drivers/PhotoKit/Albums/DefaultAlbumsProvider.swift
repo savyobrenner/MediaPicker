@@ -25,7 +25,7 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
     }
     
     func reloadInternal() {
-        albumsCancellable = [PHAssetCollectionType.album, .smartAlbum]
+        albumsCancellable = [PHAssetCollectionType.smartAlbum, .smartAlbum]
             .publisher
             .map { fetchAlbums(type: $0) }
             .scan([], +)
@@ -78,7 +78,7 @@ private extension DefaultAlbumsProvider {
             }
             
             options.sortDescriptors = [
-                NSSortDescriptor(key: "creationDate", ascending: false)
+                NSSortDescriptor(key: "startDate", ascending: true)
             ]
             options.fetchLimit = 1
             let fetchResult = PHAsset.fetchAssets(in: collection, options: options)

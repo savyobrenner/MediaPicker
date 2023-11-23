@@ -25,16 +25,21 @@ extension AlbumModel: Identifiable {
     public var title: String? {
         source.localizedTitle
     }
-    
-    public var assetsQuantity: String? {
-        "(\(source.estimatedAssetCount))"
-    }
 }
 
 extension AlbumModel: Equatable {}
 
 extension AlbumModel {
-    func toAlbum() -> Album {
-        Album(id: id, title: title, quantity: assetsQuantity, preview: preview?.asset)
+    func fetchMediaCount(ofType mediaType: PHAssetMediaType) -> Int {
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "mediaType = %d", mediaType.rawValue)
+
+        let assets = PHAsset.fetchAssets(in: source, options: options)
+        return assets.count
+    }
+
+    func toAlbum(for mediaType: PHAssetMediaType) -> Album {
+        let count = fetchMediaCount(ofType: mediaType)
+        return Album(id: id, title: title, quantity: "(\(count))", preview: preview?.asset)
     }
 }

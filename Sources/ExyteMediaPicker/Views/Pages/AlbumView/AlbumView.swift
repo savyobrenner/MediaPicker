@@ -107,7 +107,7 @@ struct AlbumView: View {
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(selectionService.index(of: assetMediaModel) != nil ? theme.selection.selectedTint : .clear, lineWidth: 1.5)
+                .stroke(selectionService.index(of: assetMediaModel) != nil ? theme.selection.selectedTint : theme.main.albumSelectionBackground, lineWidth: 1.5)
         )
         .padding(4)
     }

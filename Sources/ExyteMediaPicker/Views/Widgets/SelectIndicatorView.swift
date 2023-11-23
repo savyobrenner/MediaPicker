@@ -22,7 +22,7 @@ struct SelectIndicatorView: View {
             case .count:
                 countView
             case .border:
-                borderView
+                EmptyView()
             }
         }
         .frame(width: 24, height: 24)
@@ -72,10 +72,5 @@ struct SelectIndicatorView: View {
                     }
             }
         }
-    }
-
-    var borderView: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .stroke(index != nil ? theme.selection.selectedTint : theme.selection.emptyTint, lineWidth: 1.5)
     }
 }
