@@ -95,7 +95,7 @@ public struct ModeSwitcher: View {
             RoundedRectangle(cornerRadius: 8)
             .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
             .background(Color.clear)
-            .ignoresSafeArea()
+            .padding(-2)
         )
         .onAppear {
             UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)], for: .selected)
