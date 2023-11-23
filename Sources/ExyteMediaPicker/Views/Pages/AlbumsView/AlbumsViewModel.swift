@@ -28,9 +28,11 @@ final class AlbumsViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.albums = $0
+                self?.albumsProvider.reload()
                 self?.isLoading = false
             }
         
+        // TODO: - Investigate glitch
 //        albumsProvider.reload()
     }
     
