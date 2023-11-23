@@ -5,116 +5,97 @@
 import SwiftUI
 
 struct AlbumView: View {
-
+    
     @EnvironmentObject private var selectionService: SelectionService
     @EnvironmentObject private var permissionsService: PermissionsService
     @Environment(\.mediaPickerTheme) private var theme
-
+    
     @ObservedObject var keyboardHeightHelper = KeyboardHeightHelper.shared
-
+    
     @StateObject var viewModel: AlbumViewModel
     @Binding var showingCamera: Bool
     @Binding var isInFullscreen: Bool
     @Binding var currentFullscreenMedia: Media?
-
+    
     var shouldShowCamera: Bool
     var shouldShowLoadingCell: Bool
     var selectionParamsHolder: SelectionParamsHolder
     var shouldDismiss: ()->()
-
+    
     @State private var fullscreenItem: AssetMediaModel?
-
+    
     var body: some View {
-        if let title = viewModel.title {
-            content.navigationTitle(title)
-        } else {
-            content
-        }
-    }
-}
-
-private extension AlbumView {
-
-    @ViewBuilder
-    var content: some View {
-        ScrollView {
-            VStack {
-                if let action = permissionsService.photoLibraryAction {
-                    PermissionsActionView(action: .library(action))
-                }
-                if shouldShowCamera, let action = permissionsService.cameraAction {
-                    PermissionsActionView(action: .camera(action))
-                }
-                if viewModel.isLoading {
-                    ProgressView()
-                        .frame(width: 150, height: 150)
-                        .tint(.white)
-                } else if viewModel.assetMediaModels.isEmpty, !shouldShowLoadingCell {
-                    Text("Não há albums disponíveis")
-                        .font(.title3)
-                        .foregroundColor(theme.main.text)
-                } else {
-                    MediasGrid(viewModel.assetMediaModels) {
-#if !targetEnvironment(simulator)
-                        if shouldShowCamera && permissionsService.cameraAction == nil {
-                            LiveCameraCell {
-                                showingCamera = true
+        GeometryReader { geometry in
+            let screenWidth = geometry.size.width
+            let spacing: CGFloat = 8
+            let padding: CGFloat = 4
+            let numberOfItemsPerRow: CGFloat = 3
+            let totalPadding = padding * 2
+            let totalSpacing = (numberOfItemsPerRow - 1) * spacing
+            let itemWidth = (screenWidth - totalSpacing - totalPadding) / numberOfItemsPerRow
+            
+            ScrollView {
+                VStack {
+                    if let action = permissionsService.photoLibraryAction {
+                        PermissionsActionView(action: .library(action))
+                    }
+                    if shouldShowCamera, let action = permissionsService.cameraAction {
+                        PermissionsActionView(action: .camera(action))
+                    }
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .frame(width: 150, height: 150)
+                            .tint(.white)
+                    } else if viewModel.assetMediaModels.isEmpty, !shouldShowLoadingCell {
+                        Text("Não há albums disponíveis")
+                            .font(.title3)
+                            .foregroundColor(theme.main.text)
+                    } else {
+                        LazyVGrid(columns: Array(repeating: .init(.flexible()), count: Int(numberOfItemsPerRow)), spacing: spacing) {
+                            ForEach(viewModel.assetMediaModels) { assetMediaModel in
+                                MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
+                                    .frame(width: itemWidth, height: itemWidth)
                             }
                         }
-#endif
-                    } content: { assetMediaModel in
-                        cellView(assetMediaModel)
-                    } loadingCell: {
-                        if shouldShowLoadingCell {
-                            ZStack {
-                                Color.white.opacity(0.5)
-                                ProgressView()
-                                    .frame(width: 150, height: 150)
-                                    .tint(.white)
-                            }
-                            .aspectRatio(1, contentMode: .fit)
-                        }
+                        .padding([.horizontal], padding)
                     }
-                    .onChange(of: viewModel.assetMediaModels) { newValue in 
-                        selectionService.updateSelection(with: newValue)
-                    }
+                    
+                    Spacer()
                 }
-                
-                Spacer()
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-        }
-        .background(theme.main.albumSelectionBackground)
-        .onTapGesture {
-            if keyboardHeightHelper.keyboardDisplayed {
-                dismissKeyboard()
+            .background(theme.main.albumSelectionBackground)
+            .onTapGesture {
+                if keyboardHeightHelper.keyboardDisplayed {
+                    dismissKeyboard()
+                }
             }
-        }
-        .overlay {
-            if let item = fullscreenItem {
-                FullscreenContainer(
-                    isPresented: fullscreenPresentedBinding(),
-                    currentFullscreenMedia: $currentFullscreenMedia,
-                    assetMediaModels: viewModel.assetMediaModels,
-                    selection: item.id,
-                    selectionParamsHolder: selectionParamsHolder,
-                    shouldDismiss: shouldDismiss
-                )
+            .overlay {
+                if let item = fullscreenItem {
+                    FullscreenContainer(
+                        isPresented: fullscreenPresentedBinding(),
+                        currentFullscreenMedia: $currentFullscreenMedia,
+                        assetMediaModels: viewModel.assetMediaModels,
+                        selection: item.id,
+                        selectionParamsHolder: selectionParamsHolder,
+                        shouldDismiss: shouldDismiss
+                    )
+                }
             }
         }
     }
-
+    
     func fullscreenPresentedBinding() -> Binding<Bool> {
         Binding(
             get: { fullscreenItem != nil },
             set: { value in
-                if value == false {
+                if !value {
                     fullscreenItem = nil
                 }
             }
         )
     }
-
+    
     @ViewBuilder
     func cellView(_ assetMediaModel: AssetMediaModel) -> some View {
         let imageButton = Button {
@@ -132,9 +113,9 @@ private extension AlbumView {
             MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
                 .frame(width: 150, height: 150)
         }
-        .buttonStyle(MediaButtonStyle())
-        .contentShape(Rectangle())
-
+            .buttonStyle(MediaButtonStyle())
+            .contentShape(Rectangle())
+        
         if selectionService.mediaSelectionLimit == 1 {
             imageButton
         } else {
@@ -145,5 +126,4 @@ private extension AlbumView {
             }
         }
     }
-
 }

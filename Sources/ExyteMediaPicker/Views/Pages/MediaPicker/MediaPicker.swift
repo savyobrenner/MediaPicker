@@ -77,7 +77,7 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
 
     public init(isPresented: Binding<Bool>,
                 onChange: @escaping MediaPickerCompletionClosure,
-                mediaTitle: String = "Fotos",
+                mediaTitle: String = "Photos",
                 albumSelectionBuilder: AlbumSelectionClosure? = nil,
                 cameraSelectionBuilder: CameraSelectionClosure? = nil,
                 cameraViewBuilder: CameraViewClosure? = nil) {
@@ -262,14 +262,10 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
             ) {
                 Text(mediaTitle)
                     .tag(0)
-                    .background(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
                     .foregroundColor(.init(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
-                    .modeSwitcherTextStyle(isSelected: viewModel.internalPickerMode != .albums)
                 Text("Albums")
                     .tag(1)
-                    .background(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
                     .foregroundColor(.init(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)))
-                    .modeSwitcherTextStyle(isSelected: viewModel.internalPickerMode == .albums)
             }
             .pickerStyle(SegmentedPickerStyle())
             .frame(maxWidth: UIScreen.main.bounds.width / 2)

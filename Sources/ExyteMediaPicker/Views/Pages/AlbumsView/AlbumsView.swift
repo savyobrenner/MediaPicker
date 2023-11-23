@@ -6,7 +6,6 @@ import SwiftUI
 import Combine
 
 struct AlbumsView: View {
-
     @EnvironmentObject private var selectionService: SelectionService
     @EnvironmentObject private var permissionsService: PermissionsService
     @Environment(\.mediaPickerTheme) private var theme
@@ -22,13 +21,13 @@ struct AlbumsView: View {
     let massFilterClosure: MediaPicker.MassFilterClosure?
 
     @State private var showingLoadingCell = false
-    
+
     private var columns: [GridItem] {
-        Array(repeating: .init(.flexible(), spacing: 0), count: 2)
+        Array(repeating: .init(.flexible(), spacing: 8), count: 2)
     }
-    
-    private var cellPadding: EdgeInsets {
-        EdgeInsets(top: 2, leading: 2, bottom: 8, trailing: 2)
+
+    private var gridPadding: CGFloat {
+        8
     }
     
     var body: some View {
@@ -46,20 +45,27 @@ struct AlbumsView: View {
                         .font(.title3)
                         .foregroundColor(theme.main.text)
                 } else {
-                    LazyVGrid(columns: columns, spacing: 0) {
+                    LazyVGrid(columns: columns, spacing: 8) {
                         ForEach(viewModel.albums) { album in
                             AlbumCell(
                                 viewModel: AlbumCellViewModel(album: album)
                             )
-                            .padding(cellPadding)
+                            .padding(.all, gridPadding)
                             .onTapGesture {
                                 mediaPickerViewModel.setPickerMode(.album(album.toAlbum()))
                             }
                         }
+                        if showingLoadingCell {
+                            ProgressView()
+                                .frame(width: 150, height: 150)
+                                .tint(.white)
+                        }
                     }
+                    .padding(.horizontal, gridPadding)
                 }
                 Spacer()
             }
+            .padding(.top, gridPadding)
         }
         .onAppear {
             viewModel.onStart()
@@ -67,5 +73,6 @@ struct AlbumsView: View {
         .onDisappear {
             viewModel.onStop()
         }
+        .background(theme.main.albumSelectionBackground)
     }
 }

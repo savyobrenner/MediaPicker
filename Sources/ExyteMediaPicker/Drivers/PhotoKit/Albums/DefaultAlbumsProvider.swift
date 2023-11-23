@@ -52,23 +52,35 @@ private extension DefaultAlbumsProvider {
         if collections.count == 0 {
             return []
         }
+        
         var albums: [AlbumModel] = []
 
-        for index in 0...(collections.count - 1) {
-            let collection = collections[index]
+        collections.enumerateObjects { (collection, index, stop) in
             let options = PHFetchOptions()
+
+            switch self.mediaSelectionType {
+            case .photo:
+                options.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.image.rawValue)
+            case .video:
+                options.predicate = NSPredicate(format: "mediaType = %d", PHAssetMediaType.video.rawValue)
+            case .photoAndVideo:
+                break
+            }
+
             options.sortDescriptors = [
                 NSSortDescriptor(key: "creationDate", ascending: false)
             ]
             options.fetchLimit = 1
             let fetchResult = PHAsset.fetchAssets(in: collection, options: options)
             if fetchResult.count == 0 {
-                continue
+                return 
             }
-            let preview = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaSelectionType).first
+
+            let preview = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: self.mediaSelectionType).first
             let album = AlbumModel(preview: preview, source: collection)
             albums.append(album)
         }
+
         return albums
     }
 }
