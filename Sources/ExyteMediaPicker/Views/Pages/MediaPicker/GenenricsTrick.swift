@@ -12,11 +12,12 @@ import SwiftUI
 public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSelectionContent == EmptyView, CameraViewContent == EmptyView {
 
     init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure) {
+         onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: nil)
@@ -27,11 +28,12 @@ public extension MediaPicker where CameraSelectionContent == EmptyView, CameraVi
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String,
          albumSelectionBuilder: @escaping AlbumSelectionClosure) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: albumSelectionBuilder,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: nil)
@@ -42,11 +44,12 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraVie
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String,
          cameraSelectionBuilder: @escaping CameraSelectionClosure) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: cameraSelectionBuilder,
                   cameraViewBuilder: nil)
@@ -57,11 +60,12 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSel
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String,
          cameraViewBuilder: @escaping CameraViewClosure) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: cameraViewBuilder)
@@ -72,12 +76,13 @@ public extension MediaPicker where CameraViewContent == EmptyView {
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String,
          albumSelectionBuilder: @escaping AlbumSelectionClosure,
          cameraSelectionBuilder: @escaping CameraSelectionClosure) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: albumSelectionBuilder,
                   cameraSelectionBuilder: cameraSelectionBuilder,
                   cameraViewBuilder: nil)
@@ -88,12 +93,13 @@ public extension MediaPicker where CameraViewContent == EmptyView {
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String,
          albumSelectionBuilder: @escaping AlbumSelectionClosure,
          cameraViewBuilder: @escaping CameraViewClosure) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: albumSelectionBuilder,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: cameraViewBuilder)
@@ -104,12 +110,13 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView {
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
+         mediaTitle: String,
          cameraSelectionBuilder: @escaping CameraSelectionClosure,
          cameraViewBuilder: @escaping CameraViewClosure) {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
-                  mediaTitle: "Photos",
+                  mediaTitle: mediaTitle,
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: cameraSelectionBuilder,
                   cameraViewBuilder: cameraViewBuilder)
