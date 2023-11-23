@@ -29,13 +29,14 @@ final class AlbumsViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.albums = $0
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    self?.isLoading = false
+                }
             }
         
         // TODO: - Investigate glitch
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-            self?.albumsProvider.reload()
-            self?.isLoading = false
-        }
+        albumsProvider.reload()
     }
     
     func onStop() {
