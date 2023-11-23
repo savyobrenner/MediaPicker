@@ -16,6 +16,7 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSel
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: nil)
@@ -30,6 +31,7 @@ public extension MediaPicker where CameraSelectionContent == EmptyView, CameraVi
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: albumSelectionBuilder,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: nil)
@@ -44,6 +46,7 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraVie
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: cameraSelectionBuilder,
                   cameraViewBuilder: nil)
@@ -58,6 +61,7 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSel
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: cameraViewBuilder)
@@ -73,6 +77,7 @@ public extension MediaPicker where CameraViewContent == EmptyView {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: albumSelectionBuilder,
                   cameraSelectionBuilder: cameraSelectionBuilder,
                   cameraViewBuilder: nil)
@@ -88,6 +93,7 @@ public extension MediaPicker where CameraViewContent == EmptyView {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: albumSelectionBuilder,
                   cameraSelectionBuilder: nil,
                   cameraViewBuilder: cameraViewBuilder)
@@ -103,6 +109,7 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView {
 
         self.init(isPresented: isPresented,
                   onChange: onChange,
+                  mediaTitle: "Photos",
                   albumSelectionBuilder: nil,
                   cameraSelectionBuilder: cameraSelectionBuilder,
                   cameraViewBuilder: cameraViewBuilder)
