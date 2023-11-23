@@ -95,7 +95,7 @@ public struct ModeSwitcher: View {
             RoundedRectangle(cornerRadius: 8)
             .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
             .background(Color.clear)
-            .padding(-10)
+            .padding(10)
         )
         .onAppear {
             UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
