@@ -41,7 +41,7 @@ struct AlbumsView: View {
                         .frame(width: 150, height: 150)
                         .tint(.white)
                 } else if viewModel.albums.isEmpty {
-                    Text("Não há albums disponíveis")
+                    Text("There is no albums here")
                         .font(.title3)
                         .foregroundColor(theme.main.text)
                 } else {

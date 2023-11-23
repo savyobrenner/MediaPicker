@@ -47,7 +47,7 @@ struct AlbumView: View {
                             .frame(width: 150, height: 150)
                             .tint(.white)
                     } else if viewModel.assetMediaModels.isEmpty, !shouldShowLoadingCell {
-                        Text("Não há fotos disponíveis")
+                        Text("There is no photos here")
                             .font(.title3)
                             .foregroundColor(theme.main.text)
                     } else {

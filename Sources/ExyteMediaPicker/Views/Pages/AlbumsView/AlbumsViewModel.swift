@@ -24,16 +24,16 @@ final class AlbumsViewModel: ObservableObject {
     // MARK: - Public methods
     func onStart() {
         isLoading = true
+        albumsProvider.reload()
+        
         albumsCancellable = albumsProvider.albums
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.albums = $0
-                self?.albumsProvider.reload()
                 self?.isLoading = false
             }
         
         // TODO: - Investigate glitch
-//        albumsProvider.reload()
     }
     
     func onStop() {
