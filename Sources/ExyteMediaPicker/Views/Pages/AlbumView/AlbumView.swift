@@ -98,31 +98,25 @@ struct AlbumView: View {
     
     @ViewBuilder
     func cellView(_ assetMediaModel: AssetMediaModel) -> some View {
-        let imageButton = Button {
-            if keyboardHeightHelper.keyboardDisplayed {
-                dismissKeyboard()
-            }
-            if !selectionParamsHolder.showFullscreenPreview { // select immediately
-                selectionService.onSelect(assetMediaModel: assetMediaModel)
-                shouldDismiss()
-            }
-            else if fullscreenItem == nil {
-                fullscreenItem = assetMediaModel
-            }
+        Button {
+            onSelect(assetMediaModel: assetMediaModel)
         } label: {
             MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
         }
-            .buttonStyle(MediaButtonStyle())
-            .contentShape(Rectangle())
-        
-        if selectionService.mediaSelectionLimit == 1 {
-            imageButton
-        } else {
-            SelectableView(selected: selectionService.index(of: assetMediaModel), isFullscreen: false, canSelect: selectionService.canSelect(assetMediaModel: assetMediaModel), selectionParamsHolder: selectionParamsHolder) {
-                selectionService.onSelect(assetMediaModel: assetMediaModel)
-            } content: {
-                imageButton
-            }
+        .buttonStyle(PlainButtonStyle())
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(selectionService.index(of: assetMediaModel) != nil ? theme.selection.selectedTint : .clear, lineWidth: 1.5)
+        )
+        .padding(4)
+    }
+    
+    func onSelect(assetMediaModel: AssetMediaModel) {
+        if keyboardHeightHelper.keyboardDisplayed {
+            dismissKeyboard()
         }
+        
+        selectionService.onSelect(assetMediaModel: assetMediaModel)
     }
 }

@@ -25,7 +25,7 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
     }
     
     func reloadInternal() {
-        albumsCancellable = [PHAssetCollectionType.album, .album]
+        albumsCancellable = [PHAssetCollectionType.album, .smartAlbum]
             .publisher
             .map { fetchAlbums(type: $0) }
             .scan([], +)

@@ -93,7 +93,7 @@ struct CustomizedMediaPicker: View {
             case .unlock: appDelegate.unlockOrientation()
             }
         }
-        .mediaSelectionStyle(.count)
+        .mediaSelectionStyle(.border)
         .mediaSelectionLimit(maxCount)
         .mediaPickerTheme(
             main: .init(

@@ -25,6 +25,7 @@ final public class SelectionParamsHolder: ObservableObject {
 public enum MediaSelectionStyle {
     case checkmark
     case count
+    case border
 }
 
 public enum MediaSelectionType {

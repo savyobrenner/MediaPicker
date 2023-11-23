@@ -7,7 +7,6 @@ import SwiftUI
 struct SelectIndicatorView: View {
 
     @EnvironmentObject private var selectionService: SelectionService
-
     @Environment(\.mediaPickerTheme) var theme
 
     var index: Int?
@@ -22,6 +21,8 @@ struct SelectIndicatorView: View {
                 checkView
             case .count:
                 countView
+            case .border:
+                borderView
             }
         }
         .frame(width: 24, height: 24)
@@ -71,5 +72,10 @@ struct SelectIndicatorView: View {
                     }
             }
         }
+    }
+
+    var borderView: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .stroke(index != nil ? theme.selection.selectedTint : theme.selection.emptyTint, lineWidth: 1.5)
     }
 }
