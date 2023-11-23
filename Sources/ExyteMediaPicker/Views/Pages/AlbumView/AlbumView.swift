@@ -53,7 +53,7 @@ struct AlbumView: View {
                     } else {
                         LazyVGrid(columns: Array(repeating: .init(.flexible()), count: Int(numberOfItemsPerRow)), spacing: spacing) {
                             ForEach(viewModel.assetMediaModels) { assetMediaModel in
-                                MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
+                                cellView(assetMediaModel)
                                     .frame(width: itemWidth, height: itemWidth)
                             }
                         }
@@ -111,7 +111,6 @@ struct AlbumView: View {
             }
         } label: {
             MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
-                .frame(width: 150, height: 150)
         }
             .buttonStyle(MediaButtonStyle())
             .contentShape(Rectangle())
