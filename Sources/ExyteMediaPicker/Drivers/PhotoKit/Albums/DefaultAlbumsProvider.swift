@@ -33,8 +33,10 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
                 self?.customSortAlbums(allAlbums) ?? []
             }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                self?.subject.send($0)
+            .sink { [weak self] newAlbums in
+                if !(self?.albums.value.elementsEqual(newAlbums, by: { $0.source.localIdentifier == $1.source.localIdentifier }) ?? false) {
+                    self?.subject.send(newAlbums)
+                }
             }
     }
     
