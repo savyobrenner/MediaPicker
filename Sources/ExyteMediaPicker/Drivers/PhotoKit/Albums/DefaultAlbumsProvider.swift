@@ -9,6 +9,7 @@ import Photos
 final class DefaultAlbumsProvider: AlbumsProviderProtocol {
     
     private var subject = CurrentValueSubject<[AlbumModel], Never>([])
+    private var currentAlbums: [AlbumModel] = []
     private var albumsCancellable: AnyCancellable?
     private var permissionCancellable: AnyCancellable?
     
@@ -34,8 +35,10 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
             }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newAlbums in
-                if !(self?.albums.value.elementsEqual(newAlbums, by: { $0.source.localIdentifier == $1.source.localIdentifier }) ?? false) {
-                    self?.subject.send(newAlbums)
+                guard let self = self else { return }
+                if !self.currentAlbums.elementsEqual(newAlbums, by: { $0.source.localIdentifier == $1.source.localIdentifier }) {
+                    self.currentAlbums = newAlbums
+                    self.subject.send(newAlbums)
                 }
             }
     }
