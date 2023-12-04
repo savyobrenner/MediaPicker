@@ -9,23 +9,23 @@ struct AlbumsView: View {
     @EnvironmentObject private var selectionService: SelectionService
     @EnvironmentObject private var permissionsService: PermissionsService
     @Environment(\.mediaPickerTheme) private var theme
-
+    
     @StateObject var viewModel: AlbumsViewModel
     @ObservedObject var mediaPickerViewModel: MediaPickerViewModel
-
+    
     @Binding var showingCamera: Bool
     @Binding var currentFullscreenMedia: Media?
-
+    
     let selectionParamsHolder: SelectionParamsHolder
     let filterClosure: MediaPicker.FilterClosure?
     let massFilterClosure: MediaPicker.MassFilterClosure?
-
+    
     @State private var showingLoadingCell = false
-
+    
     private var columns: [GridItem] {
         Array(repeating: .init(.flexible(), spacing: 8), count: 2)
     }
-
+    
     private var gridPadding: CGFloat {
         8
     }

@@ -29,7 +29,9 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
             .publisher
             .map { fetchAlbums(type: $0) }
             .scan([], +)
-            .map { removeDuplicateAlbums($0) }
+            .map { [weak self] allAlbums in
+                self?.customSortAlbums(allAlbums) ?? []
+            }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.subject.send($0)
@@ -44,6 +46,21 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
         return Array(uniqueAlbums.values)
     }
     
+    private func customSortAlbums(_ albums: [AlbumModel]) -> [AlbumModel] {
+        let favoritesTitles = ["Favoritos", "Favorites"]
+        let recentTitles = ["Recentes", "Recents"]
+
+        let specialAlbums = albums.filter {
+            favoritesTitles.contains($0.source.localizedTitle ?? "") || recentTitles.contains($0.source.localizedTitle ?? "")
+        }
+        
+        let otherAlbums = albums.filter {
+            !favoritesTitles.contains($0.source.localizedTitle ?? "") && !recentTitles.contains($0.source.localizedTitle ?? "")
+        }
+        .sorted { $0.source.localizedTitle ?? "" < $1.source.localizedTitle ?? "" }
+
+        return specialAlbums + otherAlbums
+    }
 }
 
 private extension DefaultAlbumsProvider {
