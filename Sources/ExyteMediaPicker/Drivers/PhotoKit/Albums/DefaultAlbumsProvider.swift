@@ -101,7 +101,7 @@ private extension DefaultAlbumsProvider {
             }
             
             options.sortDescriptors = [
-                NSSortDescriptor(key: "creationDate", ascending: true)
+                NSSortDescriptor(key: "modificationDate", ascending: true)
             ]
             options.fetchLimit = 1
             let fetchResult = PHAsset.fetchAssets(in: collection, options: options)
