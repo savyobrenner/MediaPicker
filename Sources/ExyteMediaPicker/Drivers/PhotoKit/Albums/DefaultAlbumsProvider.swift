@@ -74,7 +74,7 @@ private extension DefaultAlbumsProvider {
     func fetchAlbums(type: PHAssetCollectionType) -> [AlbumModel] {
         let options = PHFetchOptions()
         options.includeAssetSourceTypes = [.typeUserLibrary, .typeiTunesSynced, .typeCloudShared]
-        options.sortDescriptors = [NSSortDescriptor(key: "modificationDate", ascending: false)]
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         
         let collections = PHAssetCollection.fetchAssetCollections(
             with: type,
