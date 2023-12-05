@@ -31,7 +31,8 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
             .map { fetchAlbums(type: $0) }
             .scan([], +)
             .map { [weak self] allAlbums in
-                self?.customSortAlbums(allAlbums) ?? []
+                let uniqueAlbums = self?.removeDuplicateAlbums(allAlbums) ?? []
+                return self?.customSortAlbums(uniqueAlbums) ?? []
             }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newAlbums in
