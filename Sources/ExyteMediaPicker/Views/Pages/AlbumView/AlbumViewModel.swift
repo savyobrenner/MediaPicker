@@ -24,14 +24,18 @@ final class AlbumViewModel: ObservableObject {
         isLoading = true
         mediaCancellable = mediasProvider.assetMediaModelsPublisher
             .receive(on: RunLoop.main)
-            .sink { [weak self] in
-                self?.assetMediaModels = $0
+            .sink { [weak self] models in
+                let sortedModels = models.sorted {
+                    ($0.asset.modificationDate ?? Date.distantPast) < ($1.asset.modificationDate ?? Date.distantPast)
+                }
+                self?.assetMediaModels = sortedModels
                 self?.isLoading = false
             }
         
+        
         mediasProvider.reload()
     }
-
+    
     deinit {
         mediasProvider.cancel()
         mediaCancellable = nil
