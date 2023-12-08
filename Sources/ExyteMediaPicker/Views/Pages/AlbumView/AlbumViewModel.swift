@@ -26,7 +26,7 @@ final class AlbumViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] models in
                 let sortedModels = models.sorted {
-                    ($0.asset.modificationDate ?? Date.distantPast) < ($1.asset.modificationDate ?? Date.distantPast)
+                    ($0.asset.creationDate ?? Date.distantPast) < ($1.asset.creationDate ?? Date.distantPast)
                 }
                 self?.assetMediaModels = sortedModels
                 self?.isLoading = false
