@@ -117,9 +117,9 @@ struct AlbumView: View {
             dismissKeyboard()
         }
 
-        if assetMediaModel.type == .video && selectionParamsHolder.maxSelectionLimit == 1 {
-            if let currentlySelected = selectionService.selectedItems.first {
-                selectionService.deselect(item: currentlySelected)
+        if assetMediaModel.mediaType == .video && selectionParamsHolder.selectionLimit == 1 {
+            if let currentlySelected = selectionService.selected.first {
+                selectionService.onSelect(assetMediaModel: currentlySelected)
             }
         }
 
