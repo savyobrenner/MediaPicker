@@ -116,7 +116,13 @@ struct AlbumView: View {
         if keyboardHeightHelper.keyboardDisplayed {
             dismissKeyboard()
         }
-        
+
+        if assetMediaModel.type == .video && selectionParamsHolder.maxSelectionLimit == 1 {
+            if let currentlySelected = selectionService.selectedItems.first {
+                selectionService.deselect(item: currentlySelected)
+            }
+        }
+
         selectionService.onSelect(assetMediaModel: assetMediaModel)
     }
 }
