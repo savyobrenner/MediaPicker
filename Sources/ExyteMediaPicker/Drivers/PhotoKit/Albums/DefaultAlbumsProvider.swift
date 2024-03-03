@@ -26,7 +26,7 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
     }
     
     func reloadInternal() {
-        albumsCancellable = [PHAssetCollectionType.smartAlbum, .smartAlbum]
+        albumsCancellable = [PHAssetCollectionType.smartAlbum, .album]
             .publisher
             .map { fetchAlbums(type: $0) }
             .scan([], +)
@@ -55,7 +55,7 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
     private func customSortAlbums(_ albums: [AlbumModel]) -> [AlbumModel] {
         let favoritesTitles = ["Favoritos", "Favorites"]
         let recentTitles = ["Recentes", "Recents"]
-
+        
         let specialAlbums = albums.filter {
             favoritesTitles.contains($0.source.localizedTitle ?? "") || recentTitles.contains($0.source.localizedTitle ?? "")
         }
@@ -63,8 +63,8 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
         let otherAlbums = albums.filter {
             !favoritesTitles.contains($0.source.localizedTitle ?? "") && !recentTitles.contains($0.source.localizedTitle ?? "")
         }
-        .sorted { $0.source.localizedTitle ?? "" < $1.source.localizedTitle ?? "" }
-
+            .sorted { $0.source.localizedTitle ?? "" < $1.source.localizedTitle ?? "" }
+        
         return specialAlbums + otherAlbums
     }
 }
