@@ -98,18 +98,16 @@ struct AlbumView: View {
     
     @ViewBuilder
     func cellView(_ assetMediaModel: AssetMediaModel) -> some View {
-        Button {
-            onSelect(assetMediaModel: assetMediaModel)
-        } label: {
-            MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
-        }
-        .buttonStyle(PlainButtonStyle())
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(selectionService.index(of: assetMediaModel) != nil ? theme.selection.selectedTint : theme.main.albumSelectionBackground, lineWidth: 1.5)
-        )
-        .padding(4)
+        MediaCell(viewModel: MediaViewModel(assetMediaModel: assetMediaModel))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(selectionService.index(of: assetMediaModel) != nil ? theme.selection.selectedTint : theme.main.albumSelectionBackground, lineWidth: 1.5)
+            )
+            .padding(4)
+            .onTapGesture {
+                onSelect(assetMediaModel: assetMediaModel)
+            }
     }
     
     func onSelect(assetMediaModel: AssetMediaModel) {
