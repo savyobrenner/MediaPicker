@@ -54,15 +54,15 @@ struct AlbumView: View {
                         LazyVGrid(columns: Array(repeating: .init(.flexible()), count: Int(numberOfItemsPerRow)), spacing: spacing) {
                             ForEach(viewModel.assetMediaModels) { assetMediaModel in
                                 ZStack {
+                                    cellView(assetMediaModel)
+                                        .frame(width: itemWidth, height: itemWidth)
+                                    
                                     Button {
                                         onSelect(assetMediaModel: assetMediaModel)
                                     } label: {
-                                        
+                                        Color.clear
                                     }
                                     .frame(width: itemWidth, height: itemWidth)
-                                    
-                                    cellView(assetMediaModel)
-                                        .frame(width: itemWidth, height: itemWidth)
                                 }
                             }
                         }
