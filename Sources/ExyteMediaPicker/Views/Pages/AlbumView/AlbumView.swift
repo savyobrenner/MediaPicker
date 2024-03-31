@@ -53,11 +53,17 @@ struct AlbumView: View {
                     } else {
                         LazyVGrid(columns: Array(repeating: .init(.flexible()), count: Int(numberOfItemsPerRow)), spacing: spacing) {
                             ForEach(viewModel.assetMediaModels) { assetMediaModel in
-                                cellView(assetMediaModel)
-                                    .frame(width: itemWidth, height: itemWidth)
-                                    .onTapGesture {
+                                ZStack {
+                                    cellView(assetMediaModel)
+                                        .frame(width: itemWidth, height: itemWidth)
+                                    
+                                    Button {
                                         onSelect(assetMediaModel: assetMediaModel)
+                                    } label: {
+                                        
                                     }
+                                    .frame(width: itemWidth, height: itemWidth)
+                                }
                             }
                         }
                         .padding([.horizontal], padding)
