@@ -55,6 +55,9 @@ struct AlbumView: View {
                             ForEach(viewModel.assetMediaModels) { assetMediaModel in
                                 cellView(assetMediaModel)
                                     .frame(width: itemWidth, height: itemWidth)
+                                    .onTapGesture {
+                                        onSelect(assetMediaModel: assetMediaModel)
+                                    }
                             }
                         }
                         .padding([.horizontal], padding)
@@ -105,9 +108,6 @@ struct AlbumView: View {
                     .stroke(selectionService.index(of: assetMediaModel) != nil ? theme.selection.selectedTint : theme.main.albumSelectionBackground, lineWidth: 1.5)
             )
             .padding(4)
-            .onTapGesture {
-                onSelect(assetMediaModel: assetMediaModel)
-            }
     }
     
     func onSelect(assetMediaModel: AssetMediaModel) {
