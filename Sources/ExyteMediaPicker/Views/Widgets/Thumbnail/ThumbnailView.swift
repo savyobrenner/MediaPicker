@@ -18,7 +18,7 @@ struct ThumbnailView: View {
                 Image(uiImage: preview)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .frame(width: 150, height: 150)
                     .clipped()
             }
         } else {
