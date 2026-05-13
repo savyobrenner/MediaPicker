@@ -10,8 +10,10 @@
 //
 //  - Square grid: classic uniform layout used when the flag is false.
 //
-//  Both support pinch-to-zoom between 3 / 4 / 5 columns and group assets
-//  by creation date with localized section headers.
+//  Both support pinch-to-zoom between 3 / 4 / 5 columns. Sections still
+//  exist in the viewmodel for the right-edge date scrubber, but they no
+//  longer render headers — the scroll is fully continuous and the date
+//  surfaces only when the user drags the scrubber.
 //
 
 import SwiftUI
@@ -35,6 +37,11 @@ struct AlbumView: View {
     @State private var fullscreenItem: AssetMediaModel?
     @State private var columnsCount: Int = 3
     @GestureState private var pinchScale: CGFloat = 1.0
+
+    // Scrubber state
+    @State private var scrubLabel: String = ""
+    @State private var scrubLocationY: CGFloat = 0
+    @State private var isScrubbing: Bool = false
     
     private let columnOptions: [Int] = [3, 4, 5]
     private let cellSpacing: CGFloat = 2
@@ -44,28 +51,67 @@ struct AlbumView: View {
     }
     
     var body: some View {
-        ScrollView {
-            if let action = permissionsService.photoLibraryAction {
-                PermissionsActionView(action: .library(action))
-                    .padding(.horizontal, 16)
-            }
-            
-            if viewModel.sections.isEmpty && !shouldShowLoadingCell {
-                Text(emptyMessage)
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 80)
-            } else if useMasonry {
-                masonryContent
-            } else {
-                squareGridContent
-            }
-        }
-        .background(theme.main.albumSelectionBackground.ignoresSafeArea())
-        .gesture(magnificationGesture)
-        .onTapGesture {
-            if keyboardHeightHelper.keyboardDisplayed {
-                dismissKeyboard()
+        ScrollViewReader { proxy in
+            ZStack(alignment: .topTrailing) {
+                ScrollView {
+                    if let action = permissionsService.photoLibraryAction {
+                        PermissionsActionView(action: .library(action))
+                            .padding(.horizontal, 16)
+                    }
+
+                    if viewModel.sections.isEmpty && !shouldShowLoadingCell {
+                        Text(emptyMessage)
+                            .font(.title3)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 80)
+                    } else if useMasonry {
+                        masonryContent
+                    } else {
+                        squareGridContent
+                    }
+                }
+                .background(theme.main.albumSelectionBackground.ignoresSafeArea())
+                .gesture(magnificationGesture)
+                .onTapGesture {
+                    if keyboardHeightHelper.keyboardDisplayed {
+                        dismissKeyboard()
+                    }
+                }
+
+                if !viewModel.sections.isEmpty {
+                    DateScrubber(
+                        sections: viewModel.sections,
+                        onScrub: { section, localY in
+                            handleScrub(section: section, localY: localY, proxy: proxy)
+                        },
+                        onScrubEnd: {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isScrubbing = false
+                            }
+                        }
+                    )
+                    .padding(.trailing, 4)
+                    .padding(.vertical, 8)
+                }
+
+                if isScrubbing {
+                    Text(scrubLabel)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.thinMaterial, in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                        )
+                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 2)
+                        .padding(.trailing, 32)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .offset(y: max(scrubLocationY - 16, 0))
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                }
             }
         }
         .overlay {
@@ -85,41 +131,35 @@ struct AlbumView: View {
     // MARK: - Masonry layout (Pinterest-style)
     
     private var masonryContent: some View {
-        LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-            ForEach(viewModel.sections) { section in
-                Section {
-                    masonrySection(section)
-                        .padding(.bottom, cellSpacing * 2)
-                } header: {
-                    sectionHeader(section.title)
+        // Distribute all assets across N columns in one continuous pass so
+        // the scroll is uninterrupted. The viewmodel keeps `sections` only
+        // for the scrubber: scrolling targets the section's first asset id.
+        let distributed = distributeIntoColumns(viewModel.assetMediaModels, count: columnsCount)
+        return VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: cellSpacing) {
+                ForEach(distributed.indices, id: \.self) { index in
+                    LazyVStack(spacing: cellSpacing) {
+                        ForEach(distributed[index]) { assetMediaModel in
+                            cellView(assetMediaModel)
+                                .id(assetMediaModel.id)
+                                .onTapGesture {
+                                    onTap(assetMediaModel: assetMediaModel)
+                                }
+                                .onLongPressGesture(minimumDuration: 0.35) {
+                                    openFullscreen(assetMediaModel: assetMediaModel)
+                                }
+                        }
+                    }
                 }
             }
+            .padding(.horizontal, cellSpacing)
+
             if shouldShowLoadingCell {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding()
             }
         }
-    }
-    
-    private func masonrySection(_ section: AlbumDateSection) -> some View {
-        let distributed = distributeIntoColumns(section.items, count: columnsCount)
-        return HStack(alignment: .top, spacing: cellSpacing) {
-            ForEach(distributed.indices, id: \.self) { index in
-                LazyVStack(spacing: cellSpacing) {
-                    ForEach(distributed[index]) { assetMediaModel in
-                        cellView(assetMediaModel)
-                            .onTapGesture {
-                                onTap(assetMediaModel: assetMediaModel)
-                            }
-                            .onLongPressGesture(minimumDuration: 0.35) {
-                                openFullscreen(assetMediaModel: assetMediaModel)
-                            }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, cellSpacing)
     }
     
     /// Greedy shortest-column distribution: each item is appended to the
@@ -157,23 +197,17 @@ struct AlbumView: View {
         LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount),
             alignment: .leading,
-            spacing: cellSpacing,
-            pinnedViews: [.sectionHeaders]
+            spacing: cellSpacing
         ) {
-            ForEach(viewModel.sections) { section in
-                Section {
-                    ForEach(section.items) { assetMediaModel in
-                        cellView(assetMediaModel)
-                            .onTapGesture {
-                                onTap(assetMediaModel: assetMediaModel)
-                            }
-                            .onLongPressGesture(minimumDuration: 0.35) {
-                                openFullscreen(assetMediaModel: assetMediaModel)
-                            }
+            ForEach(viewModel.assetMediaModels) { assetMediaModel in
+                cellView(assetMediaModel)
+                    .id(assetMediaModel.id)
+                    .onTapGesture {
+                        onTap(assetMediaModel: assetMediaModel)
                     }
-                } header: {
-                    sectionHeader(section.title)
-                }
+                    .onLongPressGesture(minimumDuration: 0.35) {
+                        openFullscreen(assetMediaModel: assetMediaModel)
+                    }
             }
             if shouldShowLoadingCell {
                 ProgressView()
@@ -193,19 +227,22 @@ struct AlbumView: View {
         )
     }
     
-    private func sectionHeader(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(theme.main.text)
-            Spacer()
+    // MARK: - Scrubber
+
+    private func handleScrub(section: AlbumDateSection, localY: CGFloat, proxy: ScrollViewProxy) {
+        scrubLabel = section.title
+        scrubLocationY = localY
+        if !isScrubbing {
+            withAnimation(.easeIn(duration: 0.15)) {
+                isScrubbing = true
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.main.albumSelectionBackground.opacity(0.95))
+        guard let targetId = section.items.first?.id else { return }
+        // Don't animate while dragging — direct jumps feel faster and
+        // avoid SwiftUI's lazy stacks flickering as we sweep through.
+        proxy.scrollTo(targetId, anchor: .top)
     }
-    
+
     // MARK: - Pinch to zoom
     
     private var magnificationGesture: some Gesture {
