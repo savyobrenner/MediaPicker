@@ -1,6 +1,13 @@
 //
 //  Created by Alex.M on 27.05.2022.
 //
+//  Native-looking Albums list inspired by the iOS 26 Photos app:
+//  - "My Albums" section: 2-column grid of user-created albums with
+//    square thumbnails and title/count underneath.
+//  - "Media Types" section: vertical list of smart albums (Favorites,
+//    Videos, Selfies, Live Photos, Portrait, ...) using the same SF
+//    Symbols Apple uses in the Photos sidebar.
+//
 
 import SwiftUI
 import Combine
@@ -19,60 +26,99 @@ struct AlbumsView: View {
     let filterClosure: MediaPicker.FilterClosure?
     let massFilterClosure: MediaPicker.MassFilterClosure?
     
-    @State private var showingLoadingCell = false
-    
-    private var columns: [GridItem] {
-        Array(repeating: .init(.flexible(), spacing: 8), count: 2)
-    }
-    
-    private var gridPadding: CGFloat {
-        8
-    }
+    private let gridColumns: [GridItem] = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16)
+    ]
     
     var body: some View {
         ScrollView {
-            VStack {
-                if let action = permissionsService.photoLibraryAction {
-                    PermissionsActionView(action: .library(action))
-                }
-                if viewModel.isLoading {
-                    ProgressView()
-                        .frame(width: 150, height: 150)
-                        .tint(.white)
-                } else if viewModel.albums.isEmpty {
-                    Text("There is no albums here")
-                        .font(.title3)
-                        .foregroundColor(theme.main.text)
-                } else {
-                    LazyVGrid(columns: columns, spacing: 8) {
-                        ForEach(viewModel.albums) { album in
-                            AlbumCell(
-                                viewModel: AlbumCellViewModel(album: album)
-                            )
-                            .padding(.all, gridPadding)
-                            .onTapGesture {
-                                mediaPickerViewModel.setPickerMode(.album(album.toAlbum()))
-                            }
-                        }
-                        if showingLoadingCell {
-                            ProgressView()
-                                .frame(width: 150, height: 150)
-                                .tint(.white)
-                        }
-                    }
-                    .padding(.horizontal, gridPadding)
-                }
-                Spacer()
+            if let action = permissionsService.photoLibraryAction {
+                PermissionsActionView(action: .library(action))
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
             }
-            .padding(.top, gridPadding)
+            
+            if viewModel.isLoading && viewModel.smartAlbums.isEmpty && viewModel.userAlbums.isEmpty {
+                ProgressView()
+                    .controlSize(.large)
+                    .padding(.top, 80)
+            } else {
+                VStack(alignment: .leading, spacing: 24) {
+                    if !viewModel.userAlbums.isEmpty {
+                        myAlbumsSection
+                    }
+                    if !viewModel.smartAlbums.isEmpty {
+                        mediaTypesSection
+                    }
+                }
+                .padding(.bottom, 32)
+            }
         }
+        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .runOnceOnAppear {
             viewModel.onStart()
         }
         .onDisappear {
             viewModel.onStop()
         }
-        .background(theme.main.albumSelectionBackground)
+    }
+    
+    private var myAlbumsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(localized("Meus álbuns", "My Albums"))
+            
+            LazyVGrid(columns: gridColumns, spacing: 20) {
+                ForEach(viewModel.userAlbums) { album in
+                    UserAlbumGridCell(viewModel: AlbumCellViewModel(album: album))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            mediaPickerViewModel.setPickerMode(.album(album.toAlbum()))
+                        }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+    
+    private var mediaTypesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(localized("Tipos de mídia", "Media Types"))
+            
+            VStack(spacing: 0) {
+                ForEach(Array(viewModel.smartAlbums.enumerated()), id: \.element.id) { index, album in
+                    Button {
+                        mediaPickerViewModel.setPickerMode(.album(album.toAlbum()))
+                    } label: {
+                        SmartAlbumRowCell(viewModel: AlbumCellViewModel(album: album))
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if index < viewModel.smartAlbums.count - 1 {
+                        Divider()
+                            .padding(.leading, 60)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+            .padding(.horizontal, 16)
+        }
+    }
+    
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 22, weight: .bold))
+            .foregroundColor(theme.main.text)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+    }
+    
+    private func localized(_ ptBR: String, _ enUS: String) -> String {
+        let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
+        return isPortuguese ? ptBR : enUS
     }
 }
 
