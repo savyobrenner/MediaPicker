@@ -36,16 +36,14 @@ struct MediaCell: View {
         return w / h
     }
     
-    private var thumbnailScaling: ContentMode {
-        selectionParamsHolder.gridUsesAssetAspectRatio ? .fit : .fill
-    }
-    
+    /// In aspect-ratio mode the cell IS the asset's shape, so the
+    /// thumbnail fills it exactly (no letterbox).
     var body: some View {
         ZStack(alignment: .topTrailing) {
             GeometryReader { geometry in
-                ThumbnailView(preview: viewModel.preview, imageContentMode: thumbnailScaling)
+                ThumbnailView(preview: viewModel.preview, imageContentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
-                    .background(Color.black.opacity(selectionParamsHolder.gridUsesAssetAspectRatio ? 0.35 : 0))
+                    .clipped()
                     .onAppear {
                         viewModel.onStart(size: geometry.size)
                     }
