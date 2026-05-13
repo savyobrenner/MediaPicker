@@ -13,11 +13,9 @@ struct AlbumView: View {
     @ObservedObject var keyboardHeightHelper = KeyboardHeightHelper.shared
     
     @StateObject var viewModel: AlbumViewModel
-    @Binding var showingCamera: Bool
     @Binding var isInFullscreen: Bool
     @Binding var currentFullscreenMedia: Media?
     
-    var shouldShowCamera: Bool
     var shouldShowLoadingCell: Bool
     var selectionParamsHolder: SelectionParamsHolder
     var shouldDismiss: ()->()
@@ -38,9 +36,6 @@ struct AlbumView: View {
                 VStack {
                     if let action = permissionsService.photoLibraryAction {
                         PermissionsActionView(action: .library(action))
-                    }
-                    if shouldShowCamera, let action = permissionsService.cameraAction {
-                        PermissionsActionView(action: .camera(action))
                     }
                     if viewModel.isLoading {
                         ProgressView()

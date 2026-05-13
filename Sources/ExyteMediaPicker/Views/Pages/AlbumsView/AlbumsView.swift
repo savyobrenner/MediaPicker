@@ -13,7 +13,6 @@ struct AlbumsView: View {
     @StateObject var viewModel: AlbumsViewModel
     @ObservedObject var mediaPickerViewModel: MediaPickerViewModel
     
-    @Binding var showingCamera: Bool
     @Binding var currentFullscreenMedia: Media?
     
     let selectionParamsHolder: SelectionParamsHolder
@@ -99,4 +98,3 @@ extension View {
         modifier(RunOnceViewModifier(action: action))
     }
 }
-

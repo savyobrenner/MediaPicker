@@ -5,30 +5,13 @@
 import SwiftUI
 import Combine
 
-public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: View, CameraViewContent: View>: View {
+public struct MediaPicker<AlbumSelectionContent: View>: View {
 
     /// To provide custom buttons layout for photos grid view use actions and views provided by this closure:
     /// - standard header with photos/albums switcher
     /// - selection view you can embed in your view
     /// - is in fullscreen photo details mode
     public typealias AlbumSelectionClosure = ((ModeSwitcher, AlbumSelectionView, Bool) -> AlbumSelectionContent)
-
-    /// To provide custom buttons layout for camera selection view use actions and views provided by this closure:
-    /// - add more photos closure
-    /// - cancel closure
-    /// - selection view you can embed in your view
-    public typealias CameraSelectionClosure = ((@escaping SimpleClosure, @escaping SimpleClosure, CameraSelectionView) -> CameraSelectionContent)
-
-    /// To provide custom buttons layout for camera  view use actions and views provided by this closure:
-    /// - live camera capture view
-    /// - cancel closure
-    /// - show preview of taken photos
-    /// - take photo closure
-    /// - start record video closure
-    /// - stop record video closure
-    /// - flash off/on closure
-    /// - camera back/front closure
-    public typealias CameraViewClosure = ((LiveCameraView, @escaping SimpleClosure, @escaping SimpleClosure, @escaping SimpleClosure, @escaping SimpleClosure, @escaping SimpleClosure, @escaping SimpleClosure, @escaping SimpleClosure) -> CameraViewContent)
 
     public typealias FilterClosure = (Media) async -> Media?
     public typealias MassFilterClosure = ([Media]) async -> [Media]
@@ -41,8 +24,6 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
     // MARK: - View builders
 
     private var albumSelectionBuilder: AlbumSelectionClosure? = nil
-    private var cameraSelectionBuilder: CameraSelectionClosure? = nil
-    private var cameraViewBuilder: CameraViewClosure? = nil
     private var mediaTitle = "Fotos"
 
     // MARK: - Customization
@@ -51,8 +32,6 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
     @Binding private var currentFullscreenMediaBinding: Media?
 
     private var pickerMode: Binding<MediaPickerMode>?
-    private var showingLiveCameraCell: Bool = false
-    private var didPressCancelCamera: (() -> Void)?
     private var orientationHandler: MediaPickerOrientationHandler = {_ in}
     private var filterClosure: FilterClosure?
     private var massFilterClosure: MassFilterClosure?
@@ -64,23 +43,19 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
 
     @StateObject private var viewModel = MediaPickerViewModel()
     @StateObject private var selectionService = SelectionService()
-    @StateObject private var cameraSelectionService = CameraSelectionService()
     @StateObject private var permissionService = PermissionsService()
 
-    @State private var readyToShowCamera = false
     @State private var isInFullscreen: Bool = false
     @State private var currentFullscreenMedia: Media?
 
-    @State private var internalPickerMode: MediaPickerMode = .photos // a hack for slow camera dismissal
+    @State private var internalPickerMode: MediaPickerMode = .photos
 
     // MARK: - Object life cycle
 
     public init(isPresented: Binding<Bool>,
                 onChange: @escaping MediaPickerCompletionClosure,
                 mediaTitle: String = "Photos",
-                albumSelectionBuilder: AlbumSelectionClosure? = nil,
-                cameraSelectionBuilder: CameraSelectionClosure? = nil,
-                cameraViewBuilder: CameraViewClosure? = nil) {
+                albumSelectionBuilder: AlbumSelectionClosure? = nil) {
 
         self._isPresented = isPresented
         self._albums = .constant([])
@@ -88,64 +63,56 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
 
         self.onChange = onChange
         self.albumSelectionBuilder = albumSelectionBuilder
-        self.cameraSelectionBuilder = cameraSelectionBuilder
-        self.cameraViewBuilder = cameraViewBuilder
         self.mediaTitle = mediaTitle
     }
 
     public var body: some View {
-        Group {
-            switch internalPickerMode { // please don't use viewModel.internalPickerMode here - it slows down camera dismissal
-                case .photos, .albums, .album(_):
-                    albumSelectionContainer
-                case .camera:
-                    cameraContainer
-                case .cameraSelection:
-                    cameraSelectionContainer
+        albumSelectionContainer
+            .background(theme.main.albumSelectionBackground.ignoresSafeArea())
+            .environmentObject(selectionService)
+            .environmentObject(permissionService)
+            .onAppear {
+                permissionService.askLibraryPermissionIfNeeded()
+
+                selectionService.onChange = onChange
+                selectionService.mediaSelectionLimit = selectionParamsHolder.selectionLimit
+
+                viewModel.shouldUpdatePickerMode = { mode in
+                    pickerMode?.wrappedValue = mode
                 }
-        }
-        .background(theme.main.albumSelectionBackground.ignoresSafeArea())
-        .environmentObject(selectionService)
-        .environmentObject(cameraSelectionService)
-        .environmentObject(permissionService)
-        .onAppear {
-            permissionService.askLibraryPermissionIfNeeded()
-
-            selectionService.onChange = onChange
-            selectionService.mediaSelectionLimit = selectionParamsHolder.selectionLimit
-            
-            cameraSelectionService.onChange = onChange
-            cameraSelectionService.mediaSelectionLimit = selectionParamsHolder.selectionLimit
-
-            viewModel.shouldUpdatePickerMode = { mode in
-                pickerMode?.wrappedValue = mode
+                viewModel.onStart()
             }
-            viewModel.onStart()
-        }
-        .onChange(of: viewModel.albums) {
-            self.albums = $0.map { $0.toAlbum() }
-        }
-        .onChange(of: pickerMode?.wrappedValue) { mode in
-            if let mode = mode {
-                viewModel.setPickerMode(mode)
+            .onChange(of: viewModel.albums) {
+                self.albums = $0.map { $0.toAlbum() }
             }
-        }
-        .onChange(of: viewModel.internalPickerMode) { newValue in
-            internalPickerMode = newValue
-        }
-        .onChange(of: currentFullscreenMedia) { currentFullscreenMedia in
-            _currentFullscreenMediaBinding.wrappedValue = currentFullscreenMedia
-        }
-        .onAppear {
-            if let mode = pickerMode?.wrappedValue {
-                viewModel.setPickerMode(mode)
+            .onChange(of: pickerMode?.wrappedValue) { mode in
+                if let mode = mode {
+                    viewModel.setPickerMode(mode)
+                }
             }
-        }
+            .onChange(of: viewModel.internalPickerMode) { newValue in
+                internalPickerMode = newValue
+            }
+            .onChange(of: currentFullscreenMedia) { currentFullscreenMedia in
+                _currentFullscreenMediaBinding.wrappedValue = currentFullscreenMedia
+            }
+            .onAppear {
+                if let mode = pickerMode?.wrappedValue {
+                    viewModel.setPickerMode(mode)
+                }
+            }
     }
 
     @ViewBuilder
     var albumSelectionContainer: some View {
-        let albumSelectionView = AlbumSelectionView(viewModel: viewModel, showingCamera: cameraBinding(), isInFullscreen: $isInFullscreen, currentFullscreenMedia: $currentFullscreenMedia, showingLiveCameraCell: showingLiveCameraCell, selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure) {
+        let albumSelectionView = AlbumSelectionView(
+            viewModel: viewModel,
+            isInFullscreen: $isInFullscreen,
+            currentFullscreenMedia: $currentFullscreenMedia,
+            selectionParamsHolder: selectionParamsHolder,
+            filterClosure: filterClosure,
+            massFilterClosure: massFilterClosure
+        ) {
             // has media limit of 1, and it's been selected
             isPresented = false
         }
@@ -153,10 +120,11 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
         if let albumSelectionBuilder = albumSelectionBuilder {
             albumSelectionBuilder(
                 ModeSwitcher(
-                selection: modeBinding(), 
-                mediaTitle: mediaTitle
+                    selection: modeBinding(),
+                    mediaTitle: mediaTitle
                 ),
-                albumSelectionView, isInFullscreen
+                albumSelectionView,
+                isInFullscreen
             )
         } else {
             VStack(spacing: 0) {
@@ -170,83 +138,10 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
         }
     }
 
-    @ViewBuilder
-    var cameraSelectionContainer: some View {
-        Group {
-            if let cameraSelectionBuilder = cameraSelectionBuilder {
-                cameraSelectionBuilder(
-                    { viewModel.setPickerMode(.camera) }, // add more
-                    { viewModel.onCancelCameraSelection(cameraSelectionService.hasSelected) }, // cancel
-                    CameraSelectionView(selectionParamsHolder: selectionParamsHolder)
-                )
-            } else {
-                DefaultCameraSelectionContainer(
-                    viewModel: viewModel,
-                    showingPicker: $isPresented,
-                    selectionParamsHolder: selectionParamsHolder
-                )
-            }
-        }
-        .confirmationDialog("", isPresented: $viewModel.showingExitCameraConfirmation, titleVisibility: .hidden) {
-            deleteAllButton
-        }
-    }
-
-    @ViewBuilder
-    var cameraContainer: some View {
-        ZStack {
-            Color.black
-                .ignoresSafeArea(.all)
-                .onAppear {
-                    DispatchQueue.main.async {
-                        readyToShowCamera = true
-                    }
-                }
-                .onDisappear {
-                    readyToShowCamera = false
-                }
-            if readyToShowCamera {
-                cameraSheet() {
-                    // did take picture
-                    if !cameraSelectionService.hasSelected {
-                        viewModel.setPickerMode(.cameraSelection)
-                    }
-                    guard let url = viewModel.pickedMediaUrl else { return }
-                    cameraSelectionService.onSelect(media: URLMediaModel(url: url))
-                    viewModel.pickedMediaUrl = nil
-                } didPressCancel: {
-                    if let didPressCancel = didPressCancelCamera {
-                        didPressCancel()
-                    } else {
-                        viewModel.setPickerMode(.photos)
-                    }
-                }
-                .confirmationDialog("", isPresented: $viewModel.showingExitCameraConfirmation, titleVisibility: .hidden) {
-                    deleteAllButton
-                }
-            }
-        }
-        .onAppear {
-            orientationHandler(.lock)
-        }
-        .onDisappear {
-            orientationHandler(.unlock)
-        }
-    }
-
-    var deleteAllButton: some View {
-        Button("Delete All") {
-            cameraSelectionService.removeAll()
-            viewModel.setPickerMode(.photos)
-            onChange(selectionService.mapToMedia())
-        }
-    }
-
     var defaultHeaderView: some View {
         HStack {
             Button("Cancelar") {
                 selectionService.removeAll()
-                cameraSelectionService.removeAll()
                 isPresented = false
             }
 
@@ -283,15 +178,6 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
         .background(Color(uiColor: .systemGroupedBackground))
     }
 
-    func cameraBinding() -> Binding<Bool> {
-        Binding(
-            get: { viewModel.internalPickerMode == .camera },
-            set: { value in
-                if value { viewModel.setPickerMode(.camera) }
-            }
-        )
-    }
-
     func modeBinding() -> Binding<Int> {
         Binding(
             get: { viewModel.internalPickerMode == .albums ? 1 : 0 },
@@ -300,32 +186,11 @@ public struct MediaPicker<AlbumSelectionContent: View, CameraSelectionContent: V
             }
         )
     }
-
-    @ViewBuilder
-    func cameraSheet(didTakePicture: @escaping ()->(), didPressCancel: @escaping ()->()) -> some View {
-#if targetEnvironment(simulator)
-        CameraStubView(isPresented: cameraBinding())
-#elseif os(iOS)
-        if let cameraViewBuilder = cameraViewBuilder {
-            CustomCameraView<CameraViewContent>(viewModel: viewModel, didTakePicture: didTakePicture, didPressCancel: didPressCancel, cameraViewBuilder: cameraViewBuilder)
-                .ignoresSafeArea()
-        } else {
-            StandardConrolsCameraView(viewModel: viewModel, didTakePicture: didTakePicture, didPressCancel: didPressCancel, selectionParamsHolder: selectionParamsHolder)
-                .ignoresSafeArea()
-        }
-#endif
-    }
 }
 
 // MARK: - Customization
 
 public extension MediaPicker {
-
-    func showLiveCameraCell(_ show: Bool = true) -> MediaPicker {
-        var mediaPicker = self
-        mediaPicker.showingLiveCameraCell = show
-        return mediaPicker
-    }
 
     func mediaSelectionType(_ type: MediaSelectionType) -> MediaPicker {
         selectionParamsHolder.mediaType = type
@@ -365,12 +230,6 @@ public extension MediaPicker {
     func applyFilter(_ filterClosure: @escaping MassFilterClosure) -> MediaPicker {
         var mediaPicker = self
         mediaPicker.massFilterClosure = filterClosure
-        return mediaPicker
-    }
-
-    func didPressCancelCamera(_ didPressCancelCamera: @escaping ()->()) -> MediaPicker {
-        var mediaPicker = self
-        mediaPicker.didPressCancelCamera = didPressCancelCamera
         return mediaPicker
     }
 

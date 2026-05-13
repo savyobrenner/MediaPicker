@@ -5,10 +5,9 @@
 import Foundation
 import SwiftUI
 
-public struct MediasGrid<Data, Camera, Content, LoadingCell>: View where Data: RandomAccessCollection, Data.Element: Identifiable, Camera: View, Content: View, LoadingCell: View {
+public struct MediasGrid<Data, Content, LoadingCell>: View where Data: RandomAccessCollection, Data.Element: Identifiable, Content: View, LoadingCell: View {
 
     public let data: Data
-    public let camera: () -> Camera
     public let content: (Data.Element) -> Content
     public let loadingCell: () -> LoadingCell
     
@@ -18,16 +17,14 @@ public struct MediasGrid<Data, Camera, Content, LoadingCell>: View where Data: R
         [GridItem(.adaptive(minimum: 100), spacing: theme.cellStyle.columnsSpacing, alignment: .top)]
     }
     
-    public init(_ data: Data, @ViewBuilder camera: @escaping () -> Camera, @ViewBuilder content: @escaping (Data.Element) -> Content, @ViewBuilder loadingCell: @escaping () -> LoadingCell) {
+    public init(_ data: Data, @ViewBuilder content: @escaping (Data.Element) -> Content, @ViewBuilder loadingCell: @escaping () -> LoadingCell) {
         self.data = data
-        self.camera = camera
         self.content = content
         self.loadingCell = loadingCell
     }
 
     public var body: some View {
         LazyVGrid(columns: columns, spacing: theme.cellStyle.rowSpacing) {
-            camera()
             ForEach(data) { item in
                 content(item)
             }

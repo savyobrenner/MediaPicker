@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-// MARK: - Partial genereic specification imitation
+// MARK: - Partial generic specification imitation
 
-public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSelectionContent == EmptyView, CameraViewContent == EmptyView {
+public extension MediaPicker where AlbumSelectionContent == EmptyView {
 
     init(isPresented: Binding<Bool>,
          onChange: @escaping MediaPickerCompletionClosure,
@@ -18,107 +18,6 @@ public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSel
         self.init(isPresented: isPresented,
                   onChange: onChange,
                   mediaTitle: mediaTitle,
-                  albumSelectionBuilder: nil,
-                  cameraSelectionBuilder: nil,
-                  cameraViewBuilder: nil)
-    }
-}
-
-public extension MediaPicker where CameraSelectionContent == EmptyView, CameraViewContent == EmptyView {
-
-    init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure,
-         mediaTitle: String,
-         albumSelectionBuilder: @escaping AlbumSelectionClosure) {
-
-        self.init(isPresented: isPresented,
-                  onChange: onChange,
-                  mediaTitle: mediaTitle,
-                  albumSelectionBuilder: albumSelectionBuilder,
-                  cameraSelectionBuilder: nil,
-                  cameraViewBuilder: nil)
-    }
-}
-
-public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraViewContent == EmptyView {
-
-    init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure,
-         mediaTitle: String,
-         cameraSelectionBuilder: @escaping CameraSelectionClosure) {
-
-        self.init(isPresented: isPresented,
-                  onChange: onChange,
-                  mediaTitle: mediaTitle,
-                  albumSelectionBuilder: nil,
-                  cameraSelectionBuilder: cameraSelectionBuilder,
-                  cameraViewBuilder: nil)
-    }
-}
-
-public extension MediaPicker where AlbumSelectionContent == EmptyView, CameraSelectionContent == EmptyView {
-
-    init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure,
-         mediaTitle: String,
-         cameraViewBuilder: @escaping CameraViewClosure) {
-
-        self.init(isPresented: isPresented,
-                  onChange: onChange,
-                  mediaTitle: mediaTitle,
-                  albumSelectionBuilder: nil,
-                  cameraSelectionBuilder: nil,
-                  cameraViewBuilder: cameraViewBuilder)
-    }
-}
-
-public extension MediaPicker where CameraViewContent == EmptyView {
-
-    init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure,
-         mediaTitle: String,
-         albumSelectionBuilder: @escaping AlbumSelectionClosure,
-         cameraSelectionBuilder: @escaping CameraSelectionClosure) {
-
-        self.init(isPresented: isPresented,
-                  onChange: onChange,
-                  mediaTitle: mediaTitle,
-                  albumSelectionBuilder: albumSelectionBuilder,
-                  cameraSelectionBuilder: cameraSelectionBuilder,
-                  cameraViewBuilder: nil)
-    }
-}
-
-public extension MediaPicker where CameraViewContent == EmptyView {
-
-    init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure,
-         mediaTitle: String,
-         albumSelectionBuilder: @escaping AlbumSelectionClosure,
-         cameraViewBuilder: @escaping CameraViewClosure) {
-
-        self.init(isPresented: isPresented,
-                  onChange: onChange,
-                  mediaTitle: mediaTitle,
-                  albumSelectionBuilder: albumSelectionBuilder,
-                  cameraSelectionBuilder: nil,
-                  cameraViewBuilder: cameraViewBuilder)
-    }
-}
-
-public extension MediaPicker where AlbumSelectionContent == EmptyView {
-
-    init(isPresented: Binding<Bool>,
-         onChange: @escaping MediaPickerCompletionClosure,
-         mediaTitle: String,
-         cameraSelectionBuilder: @escaping CameraSelectionClosure,
-         cameraViewBuilder: @escaping CameraViewClosure) {
-
-        self.init(isPresented: isPresented,
-                  onChange: onChange,
-                  mediaTitle: mediaTitle,
-                  albumSelectionBuilder: nil,
-                  cameraSelectionBuilder: cameraSelectionBuilder,
-                  cameraViewBuilder: cameraViewBuilder)
+                  albumSelectionBuilder: nil)
     }
 }

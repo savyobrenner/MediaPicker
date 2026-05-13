@@ -9,11 +9,6 @@ import Combine
 @MainActor
 final class MediaPickerViewModel: ObservableObject {
 
-#if os(iOS)
-    @Published var showingExitCameraConfirmation = false
-    @Published var pickedMediaUrl: URL?
-#endif
-
     @Published private(set) var internalPickerMode: MediaPickerMode = .photos
     @Published private(set) var albums: [AlbumModel] = []
 
@@ -37,13 +32,5 @@ final class MediaPickerViewModel: ObservableObject {
     func setPickerMode(_ mode: MediaPickerMode) {
         internalPickerMode = mode
         shouldUpdatePickerMode(mode)
-    }
-
-    func onCancelCameraSelection(_ hasSelected: Bool) {
-        if hasSelected {
-            showingExitCameraConfirmation = true
-        } else {
-            setPickerMode(.camera)
-        }
     }
 }

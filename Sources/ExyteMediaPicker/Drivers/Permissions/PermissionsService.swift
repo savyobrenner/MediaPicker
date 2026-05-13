@@ -4,11 +4,9 @@
 
 import Foundation
 import Combine
-import AVFoundation
 import Photos
 
 final class PermissionsService: ObservableObject {
-    @Published var cameraAction: CameraAction? = .authorize
     @Published var photoLibraryAction: PhotoLibraryAction? = .authorize
 
     private var subscriptions = Set<AnyCancellable>()
@@ -20,14 +18,7 @@ final class PermissionsService: ObservableObject {
             }
             .store(in: &subscriptions)
 
-        cameraChangePermissionPublisher
-            .sink { [weak self] in
-                self?.checkCameraAuthorizationStatus()
-            }
-            .store(in: &subscriptions)
-
         checkPhotoLibraryAuthorizationStatus()
-        checkCameraAuthorizationStatus()
     }
 
     func askLibraryPermissionIfNeeded() {
@@ -45,37 +36,6 @@ final class PermissionsService: ObservableObject {
 }
 
 private extension PermissionsService {
-    func checkCameraAuthorizationStatus() {
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        handle(camera: status)
-    }
-
-    func handle(camera status: AVAuthorizationStatus) {
-        var result: CameraAction?
-#if targetEnvironment(simulator)
-        result = .unavailable
-#else
-        switch status {
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] _ in
-                self?.checkCameraAuthorizationStatus()
-            }
-        case .restricted:
-            result = .unavailable
-        case .denied:
-            result = .authorize
-        case .authorized:
-            // Do nothing
-            break
-        @unknown default:
-            result = .unknown
-        }
-#endif
-        DispatchQueue.main.async { [weak self] in
-            self?.cameraAction = result
-        }
-    }
-
     func checkPhotoLibraryAuthorizationStatus() {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         handle(photoLibrary: status)
@@ -109,12 +69,6 @@ private extension PermissionsService {
 }
 
 extension PermissionsService {
-    enum CameraAction {
-        case authorize
-        case unavailable
-        case unknown
-    }
-
     enum PhotoLibraryAction {
         case selectMore
         case authorize
