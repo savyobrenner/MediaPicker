@@ -20,7 +20,6 @@ final class AlbumViewModel: ObservableObject {
     @Published var title: String? = nil
     @Published var assetMediaModels: [AssetMediaModel] = []
     @Published var sections: [AlbumDateSection] = []
-    @Published var isLoading: Bool = false
     
     let mediasProvider: MediasProviderProtocol
 
@@ -32,7 +31,6 @@ final class AlbumViewModel: ObservableObject {
     }
     
     func onStart() {
-        isLoading = true
         mediaCancellable = mediasProvider.assetMediaModelsPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] models in
@@ -41,7 +39,6 @@ final class AlbumViewModel: ObservableObject {
                 }
                 self?.assetMediaModels = sortedModels
                 self?.sections = Self.makeSections(from: sortedModels)
-                self?.isLoading = false
             }
         
         mediasProvider.reload()

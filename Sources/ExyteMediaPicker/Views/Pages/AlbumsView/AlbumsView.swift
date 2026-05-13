@@ -39,21 +39,15 @@ struct AlbumsView: View {
                     .padding(.top, 8)
             }
             
-            if viewModel.isLoading && viewModel.smartAlbums.isEmpty && viewModel.userAlbums.isEmpty {
-                ProgressView()
-                    .controlSize(.large)
-                    .padding(.top, 80)
-            } else {
-                VStack(alignment: .leading, spacing: 24) {
-                    if !viewModel.userAlbums.isEmpty {
-                        myAlbumsSection
-                    }
-                    if !viewModel.smartAlbums.isEmpty {
-                        mediaTypesSection
-                    }
+            VStack(alignment: .leading, spacing: 24) {
+                if !viewModel.userAlbums.isEmpty {
+                    myAlbumsSection
                 }
-                .padding(.bottom, 32)
+                if !viewModel.smartAlbums.isEmpty {
+                    mediaTypesSection
+                }
             }
+            .padding(.bottom, 32)
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .runOnceOnAppear {

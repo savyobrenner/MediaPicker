@@ -2,12 +2,10 @@
 //  Created by Alex.M on 27.05.2022.
 //
 //  Native-looking media tile inspired by the iOS 26 Photos app:
-//  - zero corner radius / zero spacing (Photos uses a flush grid)
+//  - optional natural aspect ratio from PHAsset pixel dimensions
 //  - subtle badges: Live Photo (top-left), Burst (top-left), video
-//    duration (bottom-right) and an iCloud download indicator
-//  - selection indicator: a numbered blue circle in the top-right corner
-//    when the item is selected, or a hollow circle otherwise (only
-//    visible when the user can still select more items).
+//    duration (bottom-right)
+//  - selection indicator: numbered circle / checkmark
 //
 
 import SwiftUI
@@ -30,17 +28,32 @@ struct MediaCell: View {
         selectionService.canSelect(assetMediaModel: viewModel.assetMediaModel)
     }
     
+    /// Width ÷ height from PhotoKit (falls back to 1:1 if unknown).
+    private var assetAspectRatio: CGFloat {
+        let a = viewModel.assetMediaModel.asset
+        let w = CGFloat(max(a.pixelWidth, 1))
+        let h = CGFloat(max(a.pixelHeight, 1))
+        return w / h
+    }
+    
+    private var thumbnailScaling: ContentMode {
+        selectionParamsHolder.gridUsesAssetAspectRatio ? .fit : .fill
+    }
+    
     var body: some View {
         ZStack(alignment: .topTrailing) {
             GeometryReader { geometry in
-                ThumbnailView(preview: viewModel.preview)
+                ThumbnailView(preview: viewModel.preview, imageContentMode: thumbnailScaling)
                     .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
+                    .background(Color.black.opacity(selectionParamsHolder.gridUsesAssetAspectRatio ? 0.35 : 0))
                     .onAppear {
                         viewModel.onStart(size: geometry.size)
                     }
             }
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(
+                selectionParamsHolder.gridUsesAssetAspectRatio ? assetAspectRatio : 1,
+                contentMode: .fit
+            )
             
             bottomOverlay
             topLeftBadges

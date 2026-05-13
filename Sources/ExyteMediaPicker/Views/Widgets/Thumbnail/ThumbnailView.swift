@@ -8,6 +8,9 @@ struct ThumbnailView: View {
 
 #if os(iOS)
     let preview: UIImage?
+    /// How the thumbnail image fills its frame (`.fill` crops like a square
+    /// tile; `.fit` preserves aspect ratio inside the cell).
+    var imageContentMode: ContentMode = .fill
 #else
     // FIXME: Create preview for image/video for other platforms
 #endif
@@ -17,7 +20,7 @@ struct ThumbnailView: View {
             GeometryReader { proxy in
                 Image(uiImage: preview)
                     .resizable()
-                    .scaledToFill()
+                    .aspectRatio(contentMode: imageContentMode)
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
             }

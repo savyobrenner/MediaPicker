@@ -72,12 +72,14 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
             .background(theme.main.albumSelectionBackground.ignoresSafeArea())
             .environmentObject(selectionService)
             .environmentObject(permissionService)
+            .environmentObject(selectionParamsHolder)
             .onAppear {
                 permissionService.askLibraryPermissionIfNeeded()
 
                 selectionService.onChange = onChange
                 selectionService.mediaSelectionLimit = selectionParamsHolder.selectionLimit
 
+                viewModel.defaultAlbumsProvider.mediaSelectionType = selectionParamsHolder.mediaType
                 viewModel.shouldUpdatePickerMode = { mode in
                     pickerMode?.wrappedValue = mode
                 }
@@ -101,6 +103,10 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                 if let mode = pickerMode?.wrappedValue {
                     viewModel.setPickerMode(mode)
                 }
+            }
+            .onReceive(selectionParamsHolder.$mediaType) { newValue in
+                viewModel.defaultAlbumsProvider.mediaSelectionType = newValue
+                viewModel.defaultAlbumsProvider.reload()
             }
     }
 
@@ -213,6 +219,14 @@ public extension MediaPicker {
 
     func showFullscreenPreview(_ show: Bool) -> MediaPicker {
         selectionParamsHolder.showFullscreenPreview = show
+        return self
+    }
+
+    /// When `true` (default), each grid cell uses the asset's pixel aspect
+    /// ratio so portrait / landscape / video thumbnails are not cropped to
+    /// squares. Set to `false` for a classic uniform square grid.
+    func mediaGridUsesAssetAspectRatio(_ enabled: Bool = true) -> MediaPicker {
+        selectionParamsHolder.gridUsesAssetAspectRatio = enabled
         return self
     }
 

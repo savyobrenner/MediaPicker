@@ -45,11 +45,7 @@ struct AlbumView: View {
                     .padding(.horizontal, 16)
             }
             
-            if viewModel.isLoading && viewModel.sections.isEmpty {
-                ProgressView()
-                    .controlSize(.large)
-                    .padding(.top, 80)
-            } else if viewModel.sections.isEmpty && !shouldShowLoadingCell {
+            if viewModel.sections.isEmpty && !shouldShowLoadingCell {
                 Text(emptyMessage)
                     .font(.title3)
                     .foregroundColor(.secondary)

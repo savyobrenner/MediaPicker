@@ -45,9 +45,6 @@ public struct AlbumSelectionView: View {
                 filterClosure: filterClosure,
                 massFilterClosure: massFilterClosure
             )
-            .onAppear {
-                viewModel.defaultAlbumsProvider.mediaSelectionType = selectionParamsHolder.mediaType
-            }
         case .album(let album):
             if let albumModel = viewModel.getAlbumModel(album) {
                 AlbumView(
@@ -73,6 +70,17 @@ public struct AlbumTitleView: View {
 
     @ObservedObject var viewModel: MediaPickerViewModel
     let mediaTitle: String
+    @EnvironmentObject private var selectionParamsHolder: SelectionParamsHolder
+
+    /// Albums shown in the title dropdown, respecting the current
+    /// `mediaSelectionType` (e.g. no "Videos" smart album when only
+    /// importing photos).
+    private var menuAlbums: [AlbumModel] {
+        viewModel.albums.filter { album in
+            guard let kind = album.kind else { return true }
+            return kind.isAvailable(for: selectionParamsHolder.mediaType)
+        }
+    }
 
     public var body: some View {
         Menu {
@@ -83,9 +91,9 @@ public struct AlbumTitleView: View {
                 Label(albumsLabel, systemImage: "rectangle.stack")
             }
             
-            if !viewModel.albums.isEmpty {
+            if !menuAlbums.isEmpty {
                 Divider()
-                ForEach(viewModel.albums) { albumModel in
+                ForEach(menuAlbums) { albumModel in
                     Button {
                         viewModel.setPickerMode(.album(albumModel.toAlbum()))
                     } label: {

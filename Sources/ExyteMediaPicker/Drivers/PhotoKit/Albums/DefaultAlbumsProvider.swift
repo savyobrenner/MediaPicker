@@ -14,6 +14,9 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
     
     private var subject = CurrentValueSubject<[AlbumModel], Never>([])
     private var currentAlbums: [AlbumModel] = []
+    /// Detects changes when the same album IDs are reused but the active
+    /// `mediaSelectionType` filter changes (photo vs video vs both).
+    private var lastEmittedSignature: String = ""
     
     var albums: AnyPublisher<[AlbumModel], Never> {
         subject.eraseToAnyPublisher()
@@ -34,7 +37,9 @@ final class DefaultAlbumsProvider: AlbumsProviderProtocol {
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            if !self.currentAlbums.elementsEqual(combined, by: { $0.id == $1.id }) {
+            let signature = "\(self.mediaSelectionType)|" + combined.map(\.id).joined(separator: ",")
+            if signature != self.lastEmittedSignature {
+                self.lastEmittedSignature = signature
                 self.currentAlbums = combined
                 self.subject.send(combined)
             }
