@@ -90,25 +90,23 @@ struct AlbumView: View {
                             }
                         }
                     )
-                    .padding(.trailing, 4)
-                    .padding(.vertical, 8)
                 }
 
                 if isScrubbing {
                     Text(scrubLabel)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
                         .background(.thinMaterial, in: Capsule())
                         .overlay(
                             Capsule()
-                                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
                         )
-                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 2)
-                        .padding(.trailing, 32)
+                        .shadow(color: .black.opacity(0.12), radius: 5, x: 0, y: 2)
+                        .padding(.trailing, DateScrubber.width + 8)
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                        .offset(y: max(scrubLocationY - 16, 0))
+                        .offset(y: max(scrubLocationY - 18, 0))
                         .transition(.opacity)
                         .allowsHitTesting(false)
                 }
