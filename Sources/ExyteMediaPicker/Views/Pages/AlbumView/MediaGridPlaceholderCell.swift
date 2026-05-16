@@ -5,18 +5,13 @@
 
 import SwiftUI
 
-/// Skeleton tile shown while the library index is still streaming in from PhotoKit.
+/// Uniform square skeleton tile while the library index streams in.
 struct MediaGridPlaceholderCell: View {
-
-    var aspectRatio: CGFloat = 1
 
     var body: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(Color(uiColor: .secondarySystemFill))
-            .aspectRatio(aspectRatio, contentMode: .fit)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.04), lineWidth: 0.5)
-            )
+            .fill(Color(uiColor: .tertiarySystemFill))
+            .aspectRatio(1, contentMode: .fit)
+            .shimmering()
     }
 }

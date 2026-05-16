@@ -66,7 +66,7 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
         self.albumSelectionBuilder = albumSelectionBuilder
         self.mediaTitle = mediaTitle
 
-        MediaPickerWarmup.installAutomaticWarmupWhenLibraryAuthorized()
+        MediaPickerWarmup.activateOnAppLaunch()
     }
 
     public var body: some View {

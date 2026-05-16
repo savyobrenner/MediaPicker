@@ -4,28 +4,35 @@
 //
 //  Populates `AllPhotosLibraryCache` before the picker grid opens.
 //
-//  Important:
-//  - Calling this only inside `MediaPicker.onAppear` is usually **too late** (same moment as the grid).
-//  - For best UX, the **host app** should call `prepareLibraryCacheIfNeeded(mediaType:)` after the user
-//    grants library access — e.g. app launch, onboarding, or home screen `.onAppear`.
-//  - `installAutomaticWarmupWhenLibraryAuthorized()` runs once when the picker module loads and warms
-//    `.photo` + `.photoAndVideo` after permission is already granted (helps 2nd+ picker open in-session).
+//  **App launch:** call `MediaPickerWarmup.activateOnAppLaunch()` from your `@main` App
+//  `init` or root scene `.onAppear` (after photo permission). The library also registers
+//  for `UIApplication.didFinishLaunching` when this module is linked.
 //
 
 import Foundation
 import Photos
 import Combine
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 public enum MediaPickerWarmup {
 
     private static let lock = NSLock()
     private static var inFlight = Set<MediaSelectionType>()
-    private static var didInstallAutomaticWarmup = false
+    private static var didScheduleLaunchWarmup = false
 
-    /// Fires on the main queue when a media type finished warming the library index cache.
     static let libraryCacheReadyPublisher = PassthroughSubject<MediaSelectionType, Never>()
 
-    /// Idempotent: no-op when cache is already populated or a warmup is in flight.
+    /// Call from the host app at startup (recommended). Safe to call multiple times.
+    public static func activateOnAppLaunch() {
+#if canImport(UIKit)
+        MediaPickerLaunchRegistration.ensureRegistered()
+#endif
+        scheduleWarmupOnAppLaunch()
+    }
+
     public static func prepareLibraryCacheIfNeeded(mediaType: MediaSelectionType = .photoAndVideo) {
         lock.lock()
         if AllPhotosLibraryCache.shared.entry(for: mediaType) != nil {
@@ -42,7 +49,6 @@ public enum MediaPickerWarmup {
         runWarmup(mediaType: mediaType)
     }
 
-    /// Same as `prepareLibraryCacheIfNeeded` but always rebuilds the index (e.g. after a manual refresh).
     public static func prepareLibraryCache(mediaType: MediaSelectionType = .photoAndVideo) {
         lock.lock()
         if inFlight.contains(mediaType) {
@@ -55,28 +61,30 @@ public enum MediaPickerWarmup {
         runWarmup(mediaType: mediaType)
     }
 
-    /// Call once from the host app (e.g. `@main` App `init` or first scene `onAppear`) if you do not
-    /// invoke `prepareLibraryCacheIfNeeded` yourself.
+    /// @deprecated Use `activateOnAppLaunch()` — kept for older call sites.
     public static func installAutomaticWarmupWhenLibraryAuthorized() {
-        lock.lock()
-        guard !didInstallAutomaticWarmup else {
-            lock.unlock()
-            return
-        }
-        didInstallAutomaticWarmup = true
-        lock.unlock()
-
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        guard status == .authorized || status == .limited else { return }
-
-        // Only `.photo` by default — warming `.photoAndVideo` too duplicates the whole index in RAM.
-        prepareLibraryCacheIfNeeded(mediaType: .photo)
+        activateOnAppLaunch()
     }
 
     static func isWarmingUp(mediaType: MediaSelectionType) -> Bool {
         lock.lock()
         defer { lock.unlock() }
         return inFlight.contains(mediaType)
+    }
+
+    private static func scheduleWarmupOnAppLaunch() {
+        lock.lock()
+        guard !didScheduleLaunchWarmup else {
+            lock.unlock()
+            return
+        }
+        didScheduleLaunchWarmup = true
+        lock.unlock()
+
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard status == .authorized || status == .limited else { return }
+
+        prepareLibraryCacheIfNeeded(mediaType: .photo)
     }
 
     private static func runWarmup(mediaType: MediaSelectionType) {
@@ -107,3 +115,23 @@ public enum MediaPickerWarmup {
         }
     }
 }
+
+#if canImport(UIKit)
+private enum MediaPickerLaunchRegistration {
+
+    private static let registerOnce: Void = {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didFinishLaunchingNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MediaPickerWarmup.activateOnAppLaunch()
+        }
+        return ()
+    }()
+
+    static func ensureRegistered() {
+        _ = registerOnce
+    }
+}
+#endif

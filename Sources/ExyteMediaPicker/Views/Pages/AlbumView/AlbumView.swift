@@ -51,7 +51,7 @@ struct AlbumView: View {
         case .authorize, .unavailable:
             return false
         default:
-            return viewModel.isAwaitingInitialLibraryLoad || viewModel.isStreamingLibraryIndex
+            return viewModel.isAwaitingInitialLibraryLoad
         }
     }
 
@@ -142,22 +142,16 @@ struct AlbumView: View {
     }
 
     private var placeholderGridContent: some View {
-        let placeholders = Array(repeating: 0, count: 18)
+        let placeholders = Array(repeating: 0, count: 24)
         return LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount),
             spacing: cellSpacing
         ) {
-            ForEach(placeholders.indices, id: \.self) { index in
-                MediaGridPlaceholderCell(aspectRatio: useMasonry ? placeholderAspect(for: index) : 1)
+            ForEach(placeholders.indices, id: \.self) { _ in
+                MediaGridPlaceholderCell()
             }
         }
         .padding(.horizontal, cellSpacing)
-        .redacted(reason: .placeholder)
-    }
-
-    private func placeholderAspect(for index: Int) -> CGFloat {
-        let presets: [CGFloat] = [0.75, 1.2, 0.85, 1.0, 1.35, 0.7]
-        return presets[index % presets.count]
     }
     
     // MARK: - Square grid (uniform)

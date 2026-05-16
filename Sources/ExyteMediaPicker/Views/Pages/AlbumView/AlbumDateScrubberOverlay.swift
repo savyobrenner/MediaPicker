@@ -2,8 +2,8 @@
 //  AlbumDateScrubberOverlay.swift
 //  ExyteMediaPicker
 //
-//  Scrubber state is isolated from the grid. `scrollTo` is throttled while dragging
-//  so the timeline moves with the finger without blocking the main thread.
+//  Scrubber UI is isolated from the grid. The timeline scrolls once when the finger lifts —
+//  live `scrollTo` while dragging freezes SwiftUI lazy masonry on large libraries.
 //
 
 import SwiftUI
@@ -16,11 +16,7 @@ struct AlbumDateScrubberOverlay: View {
     @State private var scrubLabel: String = ""
     @State private var scrubLocationY: CGFloat = 0
     @State private var isScrubbing: Bool = false
-    @State private var lastScrolledSectionId: String?
-    @State private var lastScrollFireTime: CFAbsoluteTime = 0
-    @State private var pendingScrollWork: DispatchWorkItem?
-
-    private let scrollThrottleSeconds: CFAbsoluteTime = 0.14
+    @State private var pendingScrollAssetId: String?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -30,9 +26,10 @@ struct AlbumDateScrubberOverlay: View {
                     handleScrub(section: section, localY: localY)
                 },
                 onScrubEnd: {
-                    pendingScrollWork?.cancel()
-                    pendingScrollWork = nil
-                    lastScrolledSectionId = nil
+                    if let id = pendingScrollAssetId {
+                        fireScroll(to: id)
+                    }
+                    pendingScrollAssetId = nil
                     withAnimation(.easeOut(duration: 0.2)) {
                         isScrubbing = false
                     }
@@ -68,35 +65,14 @@ struct AlbumDateScrubberOverlay: View {
         if !isScrubbing {
             isScrubbing = true
         }
-
-        guard section.id != lastScrolledSectionId else { return }
-        let targetId = section.anchorAssetId
-
-        let now = CFAbsoluteTimeGetCurrent()
-        if now - lastScrollFireTime >= scrollThrottleSeconds {
-            performScroll(to: targetId, sectionId: section.id)
-            return
-        }
-
-        pendingScrollWork?.cancel()
-        let delay = scrollThrottleSeconds - (now - lastScrollFireTime)
-        let capturedId = targetId
-        let capturedSectionId = section.id
-        let work = DispatchWorkItem {
-            performScroll(to: capturedId, sectionId: capturedSectionId)
-        }
-        pendingScrollWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        pendingScrollAssetId = section.anchorAssetId
     }
 
-    private func performScroll(to assetId: String, sectionId: String) {
-        lastScrolledSectionId = sectionId
-        lastScrollFireTime = CFAbsoluteTimeGetCurrent()
-        pendingScrollWork = nil
+    private func fireScroll(to assetId: String) {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            scrollProxy.scrollTo(assetId, anchor: .center)
+            scrollProxy.scrollTo(assetId, anchor: .top)
         }
     }
 }
