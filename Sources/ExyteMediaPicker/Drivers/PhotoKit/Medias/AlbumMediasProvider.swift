@@ -39,7 +39,7 @@ final class AlbumMediasProvider: BaseMediasProvider {
             guard let self else { return }
             let options = PHFetchOptions()
             options.sortDescriptors = [
-                NSSortDescriptor(key: "modificationDate", ascending: false)
+                NSSortDescriptor(key: "creationDate", ascending: false)
             ]
             let fetchResult = PHAsset.fetchAssets(in: collection, options: options)
             let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)

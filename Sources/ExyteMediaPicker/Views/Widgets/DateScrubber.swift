@@ -12,8 +12,9 @@ struct DateScrubber: View {
     static let width: CGFloat = 22
 
     let sections: [AlbumDateSection]
-    /// Total assets in the album — scrub position maps to **photo count**, not section count.
-    let totalAssetCount: Int
+    let models: [AssetMediaModel]
+    /// Visible viewport height — must NOT be scroll content height.
+    let railHeight: CGFloat
     var onScrub: (AlbumDateSection, CGFloat, Int) -> Void
     var onScrubEnd: () -> Void
 
@@ -21,30 +22,27 @@ struct DateScrubber: View {
     @State private var indexAnchorY: CGFloat = 0
 
     var body: some View {
-        GeometryReader { geo in
-            Color.clear
-                .frame(width: Self.width, height: geo.size.height)
-                .contentShape(Rectangle())
-                .gesture(scrubGesture(railHeight: geo.size.height))
-        }
-        .frame(width: Self.width)
+        Color.clear
+            .frame(width: Self.width, height: max(railHeight, 1))
+            .contentShape(Rectangle())
+            .gesture(scrubGesture)
     }
 
-    private func scrubGesture(railHeight: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 8)
+    private var scrubGesture: some Gesture {
+        DragGesture(minimumDistance: 10)
             .onChanged { value in
-                guard !sections.isEmpty, railHeight > 0, totalAssetCount > 0 else { return }
+                guard !sections.isEmpty, !models.isEmpty, railHeight > 1 else { return }
 
                 let clampedY = max(0, min(value.location.y, railHeight))
                 let progress = clampedY / railHeight
                 let candidateIndex = AlbumDateScrubMapping.assetIndex(
                     progress: progress,
-                    totalCount: totalAssetCount
+                    models: models
                 )
 
                 if candidateIndex != lockedAssetIndex {
-                    let minIndexStep = max(totalAssetCount / 100, 30)
-                    let minTravel = railHeight * 0.035
+                    let minIndexStep = max(models.count / 120, 40)
+                    let minTravel = railHeight * 0.045
                     if indexAnchorY > 0,
                        abs(candidateIndex - lockedAssetIndex) < minIndexStep,
                        abs(clampedY - indexAnchorY) < minTravel {

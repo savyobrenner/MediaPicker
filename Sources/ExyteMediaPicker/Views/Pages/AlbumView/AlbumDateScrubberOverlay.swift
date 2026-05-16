@@ -10,6 +10,7 @@ struct AlbumDateScrubberOverlay: View {
     let sections: [AlbumDateSection]
     let models: [AssetMediaModel]
     let columnsCount: Int
+    let visibleHeight: CGFloat
     let scrollProxy: ScrollViewProxy
 
     @State private var scrubLabel: String = ""
@@ -22,15 +23,15 @@ struct AlbumDateScrubberOverlay: View {
     @State private var scrollGeneration: UInt = 0
     @State private var activeScrollTask: Task<Void, Never>?
 
-    /// Live scrub: at most this many library indices per scroll tick (avoids 2026→2022 in one frame).
-    private let maxLiveScrollStep: Int = 320
-    private let liveScrollThrottleSeconds: CFAbsoluteTime = 0.14
+    private let maxLiveScrollStep: Int = 180
+    private let liveScrollThrottleSeconds: CFAbsoluteTime = 0.16
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             DateScrubber(
                 sections: sections,
-                totalAssetCount: models.count,
+                models: models,
+                railHeight: visibleHeight,
                 onScrub: { section, localY, targetIndex in
                     handleScrub(section: section, localY: localY, targetIndex: targetIndex)
                 },
@@ -58,6 +59,7 @@ struct AlbumDateScrubberOverlay: View {
                     .allowsHitTesting(false)
             }
         }
+        .frame(width: DateScrubber.width, height: visibleHeight, alignment: .topTrailing)
     }
 
     private func handleScrub(section: AlbumDateSection, localY: CGFloat, targetIndex: Int) {
@@ -67,6 +69,10 @@ struct AlbumDateScrubberOverlay: View {
 
         if !isScrubbing {
             isScrubbing = true
+            activeScrollTask?.cancel()
+            lastCommittedScrollIndex = targetIndex
+            lastScrolledSectionId = section.id
+            return
         }
 
         let isNewSection = section.id != lastScrolledSectionId
@@ -112,9 +118,9 @@ struct AlbumDateScrubberOverlay: View {
                     columnsCount: columnsCount
                 )
                 if !live, steps.count > 1 {
-                    try? await Task.sleep(nanoseconds: 70_000_000)
+                    try? await Task.sleep(nanoseconds: 80_000_000)
                 } else if live {
-                    try? await Task.sleep(nanoseconds: 16_000_000)
+                    try? await Task.sleep(nanoseconds: 20_000_000)
                 }
 #endif
                 guard !Task.isCancelled, generation == scrollGeneration else { return }
@@ -124,12 +130,11 @@ struct AlbumDateScrubberOverlay: View {
         }
     }
 
-    /// Live scrub moves in bounded steps; release walks the rest of the way in chunks.
     private func scrollIndexSteps(from: Int, to: Int, live: Bool) -> [Int] {
-        guard from != to else { return [to] }
+        guard from != to else { return [] }
 
         if !live {
-            return chunkedSteps(from: from, to: to, chunkSize: 900)
+            return chunkedSteps(from: from, to: to, chunkSize: 700)
         }
 
         let delta = to - from

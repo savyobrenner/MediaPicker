@@ -50,9 +50,10 @@ struct AlbumView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ZStack(alignment: .topTrailing) {
-                ScrollView {
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                ZStack(alignment: .topTrailing) {
+                    ScrollView {
                     if let action = permissionsService.photoLibraryAction {
                         PermissionsActionView(action: .library(action))
                             .padding(.horizontal, 16)
@@ -82,13 +83,15 @@ struct AlbumView: View {
                     }
                 }
 
-                if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
-                    AlbumDateScrubberOverlay(
-                        sections: viewModel.sections,
-                        models: viewModel.assetMediaModels,
-                        columnsCount: columnsCount,
-                        scrollProxy: proxy
-                    )
+                    if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
+                        AlbumDateScrubberOverlay(
+                            sections: viewModel.sections,
+                            models: viewModel.assetMediaModels,
+                            columnsCount: columnsCount,
+                            visibleHeight: viewport.size.height,
+                            scrollProxy: proxy
+                        )
+                    }
                 }
             }
         }

@@ -97,7 +97,7 @@ class MediasProvider {
     static func makeFetchOptions(mediaSelectionType: MediaSelectionType) -> PHFetchOptions {
         let options = PHFetchOptions()
         options.sortDescriptors = [
-            NSSortDescriptor(key: "modificationDate", ascending: false)
+            NSSortDescriptor(key: "creationDate", ascending: false)
         ]
         switch mediaSelectionType {
         case .photo:
