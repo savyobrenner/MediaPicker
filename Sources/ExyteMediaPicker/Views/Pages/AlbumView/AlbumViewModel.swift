@@ -136,7 +136,7 @@ final class AlbumViewModel: ObservableObject {
         }
     }
 
-    private static func distributeIntoColumns(_ items: [AssetMediaModel], count: Int) -> [[AssetMediaModel]] {
+    nonisolated private static func distributeIntoColumns(_ items: [AssetMediaModel], count: Int) -> [[AssetMediaModel]] {
         guard count > 0 else { return [items] }
         var columns: [[AssetMediaModel]] = Array(repeating: [], count: count)
         var heights: [Double] = Array(repeating: 0, count: count)
@@ -154,7 +154,7 @@ final class AlbumViewModel: ObservableObject {
         return columns
     }
 
-    private static func aspectRatio(for item: AssetMediaModel) -> CGFloat {
+    nonisolated private static func aspectRatio(for item: AssetMediaModel) -> CGFloat {
         let a = item.asset
         let w = CGFloat(max(a.pixelWidth, 1))
         let h = CGFloat(max(a.pixelHeight, 1))
