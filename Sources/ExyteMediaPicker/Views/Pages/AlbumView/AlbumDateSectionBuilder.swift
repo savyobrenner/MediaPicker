@@ -7,10 +7,8 @@ import Foundation
 
 enum AlbumDateSectionBuilder {
 
-  /// Groups assets for the date scrubber (newest-first, same as PhotoKit).
-  ///
-  /// Buckets stay **coarse** so a small drag does not jump many years on large libraries.
-  /// The grid itself stays continuous — these sections exist only for scrub targets.
+  /// Scrubber buckets (newest-first): Today → Yesterday → current month → previous two
+  /// calendar months → then one section per older month (`Dezembro 2025`, …).
   static func makeSections(from assets: [AssetMediaModel]) -> [AlbumDateSection] {
     let calendar = Calendar.current
     let now = Date()
@@ -20,9 +18,9 @@ enum AlbumDateSectionBuilder {
     let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
     let locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
 
-    let monthOnlyFormatter = DateFormatter()
-    monthOnlyFormatter.locale = locale
-    monthOnlyFormatter.setLocalizedDateFormatFromTemplate("MMMM")
+    let monthYearFormatter = DateFormatter()
+    monthYearFormatter.locale = locale
+    monthYearFormatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
 
     var sections: [AlbumDateSection] = []
     var lastKey: String?
@@ -41,19 +39,26 @@ enum AlbumDateSectionBuilder {
       } else if calendar.isDateInYesterday(date) {
         key = "yesterday"
         title = isPortuguese ? "Ontem" : "Yesterday"
-      } else if assetYear == currentYear {
-        if assetMonth == currentMonth {
-          key = "month-current"
-          title = monthOnlyFormatter.string(from: date).capitalized(with: locale)
-        } else {
-          key = "current-year-earlier"
-          title = isPortuguese
-            ? "Início de \(currentYear)"
-            : "Earlier \(currentYear)"
-        }
       } else {
-        key = "year-\(assetYear)"
-        title = "\(assetYear)"
+        let monthsAgo = monthsBetween(
+          year: assetYear,
+          month: assetMonth,
+          andYear: currentYear,
+          month: currentMonth
+        )
+
+        key = "month-\(assetYear)-\(assetMonth)"
+
+        switch monthsAgo {
+        case 0:
+          title = isPortuguese ? "Mês atual" : "This month"
+        case 1:
+          title = isPortuguese ? "Mês anterior" : "Last month"
+        case 2:
+          title = isPortuguese ? "Há dois meses" : "Two months ago"
+        default:
+          title = monthYearFormatter.string(from: date).capitalized(with: locale)
+        }
       }
 
       if lastKey != key {
@@ -65,5 +70,14 @@ enum AlbumDateSectionBuilder {
     }
 
     return sections
+  }
+
+  private static func monthsBetween(
+    year: Int,
+    month: Int,
+    andYear endYear: Int,
+    month endMonth: Int
+  ) -> Int {
+    (endYear - year) * 12 + (endMonth - month)
   }
 }
