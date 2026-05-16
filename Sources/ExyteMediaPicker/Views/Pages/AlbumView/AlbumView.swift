@@ -50,40 +50,39 @@ struct AlbumView: View {
     }
 
     var body: some View {
-        GeometryReader { viewport in
-            ScrollViewReader { proxy in
-                ZStack(alignment: .topTrailing) {
-                    ScrollView {
-                    if let action = permissionsService.photoLibraryAction {
-                        PermissionsActionView(action: .library(action))
-                            .padding(.horizontal, 16)
-                    }
-
-                    if shouldShowInitialLoadingIndicator {
-                        ProgressView()
-                            .tint(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 100)
-                    } else if viewModel.sections.isEmpty && !shouldShowLoadingCell && viewModel.assetMediaModels.isEmpty {
-                        Text(emptyMessage)
-                            .font(.title3)
-                            .foregroundColor(.secondary)
-                            .padding(.top, 80)
-                    } else if useMasonry {
-                        continuousMasonryContent
-                    } else {
-                        continuousSquareGridContent
-                    }
-                }
-                .background(theme.main.albumSelectionBackground.ignoresSafeArea())
-                .simultaneousGesture(magnificationGesture)
-                .onTapGesture {
-                    if keyboardHeightHelper.keyboardDisplayed {
-                        dismissKeyboard()
-                    }
+        ScrollViewReader { proxy in
+            ScrollView {
+                if let action = permissionsService.photoLibraryAction {
+                    PermissionsActionView(action: .library(action))
+                        .padding(.horizontal, 16)
                 }
 
-                    if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
+                if shouldShowInitialLoadingIndicator {
+                    ProgressView()
+                        .tint(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 100)
+                } else if viewModel.sections.isEmpty && !shouldShowLoadingCell && viewModel.assetMediaModels.isEmpty {
+                    Text(emptyMessage)
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 80)
+                } else if useMasonry {
+                    continuousMasonryContent
+                } else {
+                    continuousSquareGridContent
+                }
+            }
+            .background(theme.main.albumSelectionBackground.ignoresSafeArea())
+            .simultaneousGesture(magnificationGesture)
+            .onTapGesture {
+                if keyboardHeightHelper.keyboardDisplayed {
+                    dismissKeyboard()
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
+                    GeometryReader { viewport in
                         AlbumDateScrubberOverlay(
                             sections: viewModel.sections,
                             models: viewModel.assetMediaModels,
@@ -92,6 +91,7 @@ struct AlbumView: View {
                             scrollProxy: proxy
                         )
                     }
+                    .allowsHitTesting(true)
                 }
             }
         }

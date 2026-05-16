@@ -18,6 +18,10 @@ enum AlbumDateSectionBuilder {
     let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
     let locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
 
+    let monthOnlyFormatter = DateFormatter()
+    monthOnlyFormatter.locale = locale
+    monthOnlyFormatter.setLocalizedDateFormatFromTemplate("MMMM")
+
     let monthYearFormatter = DateFormatter()
     monthYearFormatter.locale = locale
     monthYearFormatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
@@ -49,15 +53,10 @@ enum AlbumDateSectionBuilder {
 
         key = "month-\(assetYear)-\(assetMonth)"
 
-        switch monthsAgo {
-        case 0:
-          title = isPortuguese ? "Mês atual" : "This month"
-        case 1:
-          title = isPortuguese ? "Mês anterior" : "Last month"
-        case 2:
-          title = isPortuguese ? "Há dois meses" : "Two months ago"
-        default:
-          title = monthYearFormatter.string(from: date).capitalized(with: locale)
+        if monthsAgo <= 2, assetYear == currentYear {
+          title = formatTitle(monthOnlyFormatter.string(from: date))
+        } else {
+          title = formatTitle(monthYearFormatter.string(from: date))
         }
       }
 
@@ -79,5 +78,10 @@ enum AlbumDateSectionBuilder {
     month endMonth: Int
   ) -> Int {
     (endYear - year) * 12 + (endMonth - month)
+  }
+
+  private static func formatTitle(_ raw: String) -> String {
+    guard let first = raw.first else { return raw }
+    return first.uppercased() + raw.dropFirst()
   }
 }

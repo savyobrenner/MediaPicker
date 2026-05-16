@@ -23,11 +23,30 @@ struct AlbumDateScrubberOverlay: View {
     @State private var scrollGeneration: UInt = 0
     @State private var activeScrollTask: Task<Void, Never>?
 
-    private let maxLiveScrollStep: Int = 180
-    private let liveScrollThrottleSeconds: CFAbsoluteTime = 0.16
+    private let maxLiveScrollStep: Int = 200
+    private let liveScrollThrottleSeconds: CFAbsoluteTime = 0.15
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
+            if isScrubbing, !scrubLabel.isEmpty {
+                Text(scrubLabel)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: true)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.thinMaterial, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.12), radius: 5, x: 0, y: 2)
+                    .padding(.trailing, DateScrubber.width + 10)
+                    .offset(y: max(scrubLocationY - 18, 8))
+                    .allowsHitTesting(false)
+            }
+
             DateScrubber(
                 sections: sections,
                 models: models,
@@ -39,32 +58,13 @@ struct AlbumDateScrubberOverlay: View {
                     finishScrub()
                 }
             )
-
-            if isScrubbing {
-                Text(scrubLabel)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(.thinMaterial, in: Capsule())
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.12), radius: 5, x: 0, y: 2)
-                    .padding(.trailing, DateScrubber.width + 8)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .offset(y: max(scrubLocationY - 18, 0))
-                    .transition(.opacity)
-                    .allowsHitTesting(false)
-            }
         }
-        .frame(width: DateScrubber.width, height: visibleHeight, alignment: .topTrailing)
+        .frame(maxWidth: .infinity, maxHeight: visibleHeight, alignment: .topTrailing)
     }
 
     private func handleScrub(section: AlbumDateSection, localY: CGFloat, targetIndex: Int) {
         scrubLocationY = localY
-        scrubLabel = section.title
+        scrubLabel = AlbumDateScrubLabel.title(for: targetIndex, in: models)
         fingerTargetIndex = targetIndex
 
         if !isScrubbing {
