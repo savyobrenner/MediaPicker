@@ -1,8 +1,8 @@
 //
 //  Created by Alex.M on 27.05.2022.
 //
-//  Continuous Pinterest-style grid (one masonry run). Date sections exist only for
-//  the invisible scrubber — no visual breaks between months.
+//  Continuous Pinterest-style grid. Month section anchors drive the passive date pill
+//  while scrolling (no interactive scrub rail for now).
 //
 
 import SwiftUI
@@ -26,6 +26,9 @@ struct AlbumView: View {
     @State private var fullscreenItem: AssetMediaModel?
     @State private var columnsCount: Int = 3
     @GestureState private var pinchScale: CGFloat = 1.0
+    @State private var scrollDateLabel: String = ""
+    @State private var showScrollDateIndicator = false
+    @State private var hideScrollDateTask: Task<Void, Never>?
 
     private let columnOptions: [Int] = [3, 4, 5]
     private let cellSpacing: CGFloat = 2
@@ -36,6 +39,10 @@ struct AlbumView: View {
 
     private var gridColumns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount)
+    }
+
+    private var sectionAnchorIds: Set<String> {
+        Set(viewModel.sections.map(\.anchorAssetId))
     }
 
     private var shouldShowInitialLoadingIndicator: Bool {
@@ -50,50 +57,44 @@ struct AlbumView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                if let action = permissionsService.photoLibraryAction {
-                    PermissionsActionView(action: .library(action))
-                        .padding(.horizontal, 16)
-                }
+        ScrollView {
+            if let action = permissionsService.photoLibraryAction {
+                PermissionsActionView(action: .library(action))
+                    .padding(.horizontal, 16)
+            }
 
-                if shouldShowInitialLoadingIndicator {
-                    ProgressView()
-                        .tint(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 100)
-                } else if viewModel.sections.isEmpty && !shouldShowLoadingCell && viewModel.assetMediaModels.isEmpty {
-                    Text(emptyMessage)
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 80)
-                } else if useMasonry {
-                    continuousMasonryContent
-                } else {
-                    continuousSquareGridContent
-                }
+            if shouldShowInitialLoadingIndicator {
+                ProgressView()
+                    .tint(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 100)
+            } else if viewModel.sections.isEmpty && !shouldShowLoadingCell && viewModel.assetMediaModels.isEmpty {
+                Text(emptyMessage)
+                    .font(.title3)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 80)
+            } else if useMasonry {
+                continuousMasonryContent
+            } else {
+                continuousSquareGridContent
             }
-            .background(theme.main.albumSelectionBackground.ignoresSafeArea())
-            .simultaneousGesture(magnificationGesture)
-            .onTapGesture {
-                if keyboardHeightHelper.keyboardDisplayed {
-                    dismissKeyboard()
-                }
+        }
+        .coordinateSpace(name: "albumScroll")
+        .background(theme.main.albumSelectionBackground.ignoresSafeArea())
+        .simultaneousGesture(magnificationGesture)
+        .onTapGesture {
+            if keyboardHeightHelper.keyboardDisplayed {
+                dismissKeyboard()
             }
-            .overlay(alignment: .topTrailing) {
-                if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
-                    GeometryReader { viewport in
-                        AlbumDateScrubberOverlay(
-                            sections: viewModel.sections,
-                            models: viewModel.assetMediaModels,
-                            columnsCount: columnsCount,
-                            visibleHeight: viewport.size.height,
-                            scrollProxy: proxy
-                        )
-                    }
-                    .allowsHitTesting(true)
-                }
-            }
+        }
+        .onPreferenceChange(AlbumScrollAnchorPreferenceKey.self) { positions in
+            updateScrollDateIndicator(from: positions)
+        }
+        .overlay(alignment: .topTrailing) {
+            AlbumScrollDateIndicatorOverlay(
+                label: scrollDateLabel,
+                isVisible: showScrollDateIndicator
+            )
         }
         .overlay {
             if let item = fullscreenItem {
@@ -174,6 +175,45 @@ struct AlbumView: View {
             assetMediaModel: assetMediaModel,
             selectionParamsHolder: selectionParamsHolder
         )
+        .modifier(
+            AlbumScrollAnchorReporter(
+                assetId: assetMediaModel.id,
+                isSectionAnchor: sectionAnchorIds.contains(assetMediaModel.id)
+            )
+        )
+    }
+
+    private func updateScrollDateIndicator(from positions: [AlbumScrollAnchorPosition]) {
+        guard !positions.isEmpty else { return }
+
+        let bandTop: CGFloat = -120
+        let bandBottom: CGFloat = 280
+
+        guard let topAnchor = positions
+            .filter({ $0.minY >= bandTop && $0.minY < bandBottom })
+            .min(by: { $0.minY < $1.minY }),
+            let index = viewModel.assetMediaModels.firstIndex(where: { $0.id == topAnchor.id })
+        else { return }
+
+        let label = AlbumDateScrubLabel.title(for: index, in: viewModel.assetMediaModels)
+        guard !label.isEmpty else { return }
+        bumpScrollDateIndicatorVisibility(label: label)
+    }
+
+    private func bumpScrollDateIndicatorVisibility(label: String) {
+        scrollDateLabel = label
+        withAnimation(.easeOut(duration: 0.12)) {
+            showScrollDateIndicator = true
+        }
+
+        hideScrollDateTask?.cancel()
+        hideScrollDateTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 750_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                showScrollDateIndicator = false
+            }
+        }
     }
     
     // MARK: - Pinch to zoom

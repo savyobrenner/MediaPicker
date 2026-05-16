@@ -7,8 +7,7 @@ import Foundation
 
 enum AlbumDateSectionBuilder {
 
-  /// Scrubber buckets (newest-first): Today → Yesterday → current month → previous two
-  /// calendar months → then one section per older month (`Dezembro 2025`, …).
+  /// Month buckets for scroll anchors (newest-first).
   static func makeSections(from assets: [AssetMediaModel]) -> [AlbumDateSection] {
     let calendar = Calendar.current
     let now = Date()
@@ -30,7 +29,8 @@ enum AlbumDateSectionBuilder {
     var lastKey: String?
 
     for (index, asset) in assets.enumerated() {
-      let date = asset.asset.creationDate ?? Date.distantPast
+      guard let date = AlbumAssetDate.captureDate(for: asset.asset) else { continue }
+
       let assetYear = calendar.component(.year, from: date)
       let assetMonth = calendar.component(.month, from: date)
 
