@@ -19,7 +19,10 @@ struct MediaCell: View {
     @EnvironmentObject private var selectionService: SelectionService
 
     let selectionParamsHolder: SelectionParamsHolder
-    
+
+    /// Shared by thumbnail clip and selection ring so corners stay aligned.
+    private var cellCornerRadius: CGFloat { 10 }
+
     private var selectionIndex: Int? {
         selectionService.index(of: viewModel.assetMediaModel)
     }
@@ -58,6 +61,7 @@ struct MediaCell: View {
             selectionBadge
         }
         .background(Color(uiColor: .secondarySystemFill))
+        .clipShape(RoundedRectangle(cornerRadius: cellCornerRadius, style: .continuous))
         .overlay(selectionBorder)
         .onDisappear {
             viewModel.onStop()
@@ -169,8 +173,12 @@ struct MediaCell: View {
     @ViewBuilder
     private var selectionBorder: some View {
         if selectionIndex != nil {
-            Rectangle()
-                .stroke(theme.selection.selectedTint, lineWidth: 3)
+            RoundedRectangle(cornerRadius: cellCornerRadius, style: .continuous)
+                .strokeBorder(
+                    theme.selection.selectedTint.opacity(0.88),
+                    lineWidth: 2
+                )
+                .shadow(color: theme.selection.selectedTint.opacity(0.28), radius: 4, x: 0, y: 0)
         }
     }
 }
