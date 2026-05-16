@@ -11,6 +11,7 @@ final class MediaViewModel: ObservableObject {
     let assetMediaModel: AssetMediaModel
 
     private var requestID: PHImageRequestID?
+    private var loadGeneration: UInt = 0
 
     init(assetMediaModel: AssetMediaModel) {
         self.assetMediaModel = assetMediaModel
@@ -23,13 +24,21 @@ final class MediaViewModel: ObservableObject {
 #endif
 
     func onStart(size: CGSize) {
-        onStop()
+        loadGeneration &+= 1
+        let generation = loadGeneration
+        cancelRequestOnly()
+
         requestID = assetMediaModel.asset.image(size: size) { [weak self] image in
-            self?.preview = image
+            guard let self, generation == self.loadGeneration else { return }
+            self.preview = image
         }
     }
 
     func onStop() {
+        cancelRequestOnly()
+    }
+
+    private func cancelRequestOnly() {
         if let requestID {
             PHCachingImageManager.default().cancelImageRequest(requestID)
             self.requestID = nil
@@ -37,6 +46,6 @@ final class MediaViewModel: ObservableObject {
     }
 
     deinit {
-        onStop()
+        cancelRequestOnly()
     }
 }

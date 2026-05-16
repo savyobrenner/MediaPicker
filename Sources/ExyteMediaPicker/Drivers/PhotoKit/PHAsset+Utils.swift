@@ -141,11 +141,17 @@ extension CGImage {
 extension PHAsset {
 
     func image(size: CGSize, resultClosure: @escaping (UIImage?)->()) -> PHImageRequestID {
-        let requestSize = CGSize(width: size.width * UIScreen.main.scale, height: size.height * UIScreen.main.scale)
+        let scale = UIScreen.main.scale
+        // Floor avoids tiny fastFormat thumbs on masonry cells; PhotoKit upgrades via opportunistic.
+        let minPixelEdge: CGFloat = 280
+        let requestSize = CGSize(
+            width: max(size.width * scale, minPixelEdge),
+            height: max(size.height * scale, minPixelEdge)
+        )
 
         let options = PHImageRequestOptions()
         options.isNetworkAccessAllowed = true
-        options.deliveryMode = .fastFormat
+        options.deliveryMode = .opportunistic
         options.resizeMode = .fast
 
         return PHCachingImageManager.default().requestImage(
@@ -155,6 +161,7 @@ extension PHAsset {
             options: options,
             resultHandler: { image, info in
                 if let cancelled = info?[PHImageCancelledKey] as? Bool, cancelled { return }
+                guard let image else { return }
                 resultClosure(image)
             }
         )

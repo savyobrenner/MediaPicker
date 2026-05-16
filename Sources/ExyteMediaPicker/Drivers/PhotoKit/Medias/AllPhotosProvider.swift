@@ -23,6 +23,7 @@ final class AllPhotosProvider: BaseMediasProvider {
 
         if let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
             publishFinalSnapshot(entry.models)
+            primeVisibleThumbnails(entry.models)
             return
         }
 
@@ -34,6 +35,7 @@ final class AllPhotosProvider: BaseMediasProvider {
                     guard let self, readyType == mediaType,
                           let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) else { return }
                     self.publishFinalSnapshot(entry.models)
+                    self.primeVisibleThumbnails(entry.models)
                 }
             return
         }
@@ -61,8 +63,15 @@ final class AllPhotosProvider: BaseMediasProvider {
             )
             DispatchQueue.main.async {
                 self.publishFinalSnapshot(assets)
+                self.primeVisibleThumbnails(assets)
             }
         }
+    }
+
+    private func primeVisibleThumbnails(_ assets: [AssetMediaModel]) {
+#if os(iOS)
+        MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: assets)
+#endif
     }
 
     private func publishFinalSnapshot(_ assets: [AssetMediaModel]) {

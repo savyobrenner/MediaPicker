@@ -20,23 +20,19 @@ enum MediaThumbnailPrefetcher {
     static func prefetchThumbnailGridPriming(
         models: [AssetMediaModel],
         columnsCount: Int,
-        maxAssets: Int = 48
+        maxAssets: Int = 72
     ) {
         guard !models.isEmpty, columnsCount > 0 else { return }
 
         stopCaching()
 
-        let bounds = UIScreen.main.bounds
-        let usableWidth = bounds.width - defaultHorizontalPadding * 2
-        let rawCell = (usableWidth - CGFloat(columnsCount - 1) * defaultGridSpacing) / CGFloat(columnsCount)
-        let scale = UIScreen.main.scale
-        let edge = max(rawCell * scale, 80)
-        let targetSize = CGSize(width: edge, height: edge)
+        let targetSize = Self.gridThumbnailPixelSize(columnsCount: columnsCount)
         let assets = Array(models.prefix(maxAssets).map(\.asset))
 
         let options = PHImageRequestOptions()
         options.isNetworkAccessAllowed = true
-        options.deliveryMode = .opportunistic
+        options.deliveryMode = .highQualityFormat
+        options.resizeMode = .fast
 
         let manager = PHCachingImageManager.default() as! PHCachingImageManager
         manager.startCachingImages(
@@ -66,6 +62,22 @@ enum MediaThumbnailPrefetcher {
 
         let manager = PHCachingImageManager.default() as! PHCachingImageManager
         manager.stopCachingImages(for: assets, targetSize: size, contentMode: mode, options: nil)
+    }
+
+    static func gridThumbnailPixelSize(columnsCount: Int) -> CGSize {
+        let bounds = UIScreen.main.bounds
+        let usableWidth = bounds.width - defaultHorizontalPadding * 2
+        let rawCell = (usableWidth - CGFloat(max(columnsCount - 1, 0)) * defaultGridSpacing)
+            / CGFloat(max(columnsCount, 1))
+        let scale = UIScreen.main.scale
+        let edge = max(rawCell * scale, 300)
+        return CGSize(width: edge, height: edge)
+    }
+
+    /// Primes PhotoKit cache for the first screen after the library index is ready.
+    static func primeFirstScreenIfNeeded(models: [AssetMediaModel], columnsCount: Int = 3) {
+        guard !models.isEmpty else { return }
+        prefetchThumbnailGridPriming(models: models, columnsCount: columnsCount, maxAssets: 72)
     }
 }
 #endif

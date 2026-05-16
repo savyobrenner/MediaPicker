@@ -2,8 +2,8 @@
 //  MediaPickerWarmup.swift
 //  ExyteMediaPicker
 //
-//  Builds the in-memory PhotoKit **index** (asset list + date sections) before the picker opens.
-//  Does not decode thumbnails — that keeps memory low at launch.
+//  Builds the in-memory PhotoKit index (asset list + date sections) before the picker opens,
+//  then primes thumbnails for the first grid screen only.
 //
 //  Call `activateOnAppLaunch()` from the host app `@main` init (recommended) after library permission.
 //
@@ -32,7 +32,7 @@ public enum MediaPickerWarmup {
         scheduleWarmupOnAppLaunch()
     }
 
-    /// Builds index cache only if missing. Does not prefetch image bytes.
+    /// Builds index cache only if missing, then primes the first screen of thumbnails.
     public static func prepareLibraryCacheIfNeeded(mediaType: MediaSelectionType) {
         lock.lock()
         if AllPhotosLibraryCache.shared.entry(for: mediaType) != nil {
@@ -85,13 +85,14 @@ public enum MediaPickerWarmup {
 
     private static func runWarmup(mediaType: MediaSelectionType) {
         PermissionsService.requestPermission {
-            DispatchQueue.global(qos: .utility).async {
+            DispatchQueue.global(qos: .userInitiated).async {
                 let fetchResult = MediasProvider.fetchAssetsFetchResult(mediaSelectionType: mediaType)
                 let quickFp = MediasProvider.quickFingerprint(fetchResult: fetchResult)
 
                 if let existing = AllPhotosLibraryCache.shared.entry(for: mediaType),
                    existing.quickFingerprint == quickFp {
                     DispatchQueue.main.async {
+                        primeThumbnails(for: existing.models)
                         lock.lock()
                         inFlight.remove(mediaType)
                         lock.unlock()
@@ -111,6 +112,7 @@ public enum MediaPickerWarmup {
                 )
 
                 DispatchQueue.main.async {
+                    primeThumbnails(for: assets)
                     lock.lock()
                     inFlight.remove(mediaType)
                     lock.unlock()
@@ -119,6 +121,14 @@ public enum MediaPickerWarmup {
             }
         }
     }
+
+#if os(iOS)
+    private static func primeThumbnails(for models: [AssetMediaModel]) {
+        MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: models)
+    }
+#else
+    private static func primeThumbnails(for models: [AssetMediaModel]) {}
+#endif
 }
 
 #if canImport(UIKit)

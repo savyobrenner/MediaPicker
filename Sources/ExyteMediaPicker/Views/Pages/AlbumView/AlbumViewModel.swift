@@ -126,6 +126,9 @@ final class AlbumViewModel: ObservableObject {
         assetMediaModels = models
         self.sections = sections
         clearSectionMasonryCache()
+#if os(iOS)
+        MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: models)
+#endif
     }
 
     private func clearSectionMasonryCache() {

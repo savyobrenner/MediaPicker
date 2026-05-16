@@ -77,6 +77,11 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
             .onAppear {
                 MediaPickerWarmup.activateOnAppLaunch()
                 MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: selectionParamsHolder.mediaType)
+#if os(iOS)
+                if let entry = AllPhotosLibraryCache.shared.entry(for: selectionParamsHolder.mediaType) {
+                    MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: entry.models)
+                }
+#endif
                 permissionService.askLibraryPermissionIfNeeded()
 
                 selectionService.onChange = onChange
