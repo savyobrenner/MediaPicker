@@ -54,10 +54,21 @@ final class AlbumGridSessionStore {
         if let allPhotosSession {
             return allPhotosSession
         }
+        if let entry = AllPhotosLibraryCache.shared.entry(for: selectionParamsHolder.mediaType) {
+            let session = AllPhotosAlbumSession(
+                selectionParamsHolder: selectionParamsHolder,
+                filterClosure: filterClosure,
+                massFilterClosure: massFilterClosure,
+                preloadedEntry: entry
+            )
+            allPhotosSession = session
+            return session
+        }
         let session = AllPhotosAlbumSession(
             selectionParamsHolder: selectionParamsHolder,
             filterClosure: filterClosure,
-            massFilterClosure: massFilterClosure
+            massFilterClosure: massFilterClosure,
+            preloadedEntry: nil
         )
         allPhotosSession = session
         return session

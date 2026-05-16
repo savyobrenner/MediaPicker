@@ -38,11 +38,15 @@ final class AlbumViewModel: ObservableObject {
     init(
         mediasProvider: MediasProviderProtocol,
         mediaTypeForCacheHydration: MediaSelectionType? = nil,
-        albumMediasCacheKey: String? = nil
+        albumMediasCacheKey: String? = nil,
+        preloadedLibraryEntry: AllPhotosLibraryCache.Entry? = nil
     ) {
         self.mediasProvider = mediasProvider
-        if let mediaType = mediaTypeForCacheHydration,
-           let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
+        if let entry = preloadedLibraryEntry {
+            applyFullLibraryPayload(models: entry.models, sections: entry.sections)
+            isAwaitingInitialLibraryLoad = false
+        } else if let mediaType = mediaTypeForCacheHydration,
+                  let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
             applyFullLibraryPayload(models: entry.models, sections: entry.sections)
             isAwaitingInitialLibraryLoad = false
         } else if let cacheKey = albumMediasCacheKey,

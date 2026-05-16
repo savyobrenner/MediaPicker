@@ -20,10 +20,10 @@ final class MediaPickerViewModel: ObservableObject {
     private var albumsCancellable: AnyCancellable?
     
     func onStart() {
-        defaultAlbumsProvider.reload()
         albumsCancellable = defaultAlbumsProvider.albums.sink { [weak self] albums in
             self?.albums = albums
         }
+        defaultAlbumsProvider.reloadSmartAlbumsOnly()
     }
 
     func getAlbumModel(_ album: Album) -> AlbumModel? {
@@ -31,6 +31,9 @@ final class MediaPickerViewModel: ObservableObject {
     }
 
     func setPickerMode(_ mode: MediaPickerMode) {
+        if case .albums = mode {
+            defaultAlbumsProvider.reload()
+        }
         internalPickerMode = mode
         shouldUpdatePickerMode(mode)
     }

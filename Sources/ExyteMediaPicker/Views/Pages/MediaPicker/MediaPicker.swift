@@ -75,13 +75,6 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
             .environmentObject(permissionService)
             .environmentObject(selectionParamsHolder)
             .onAppear {
-                MediaPickerWarmup.activateOnAppLaunch()
-                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: selectionParamsHolder.mediaType)
-#if os(iOS)
-                if let entry = AllPhotosLibraryCache.shared.entry(for: selectionParamsHolder.mediaType) {
-                    MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: entry.models)
-                }
-#endif
                 permissionService.askLibraryPermissionIfNeeded()
 
                 selectionService.onChange = onChange
@@ -92,6 +85,20 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                     pickerMode?.wrappedValue = mode
                 }
                 viewModel.onStart()
+
+                if let mode = pickerMode?.wrappedValue {
+                    viewModel.setPickerMode(mode)
+                }
+
+                let mediaType = selectionParamsHolder.mediaType
+                DispatchQueue.main.async {
+                    MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: mediaType)
+#if os(iOS)
+                    if let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
+                        MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: entry.models)
+                    }
+#endif
+                }
             }
             .onChange(of: viewModel.albums) {
                 self.albums = $0.map { $0.toAlbum() }
@@ -106,11 +113,6 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
             }
             .onChange(of: currentFullscreenMedia) { currentFullscreenMedia in
                 _currentFullscreenMediaBinding.wrappedValue = currentFullscreenMedia
-            }
-            .onAppear {
-                if let mode = pickerMode?.wrappedValue {
-                    viewModel.setPickerMode(mode)
-                }
             }
             .onReceive(selectionParamsHolder.$mediaType) { newValue in
                 viewModel.defaultAlbumsProvider.mediaSelectionType = newValue

@@ -2,8 +2,6 @@
 //  AlbumMediasLibraryCache.swift
 //  ExyteMediaPicker
 //
-//  In-memory cache for smart / user album grids (Favorites, etc.).
-//
 
 import Foundation
 
@@ -28,11 +26,7 @@ final class AlbumMediasLibraryCache {
     func entry(for key: String) -> Entry? {
         lock.lock()
         defer { lock.unlock() }
-        guard let stored = storage[key] else { return nil }
-        return Entry(
-            models: stored.models,
-            sections: AlbumDateSectionBuilder.makeSections(from: stored.models)
-        )
+        return storage[key]
     }
 
     func store(models: [AssetMediaModel], key: String) {

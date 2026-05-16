@@ -23,7 +23,8 @@ final class AllPhotosAlbumSession: ObservableObject {
     init(
         selectionParamsHolder: SelectionParamsHolder,
         filterClosure: MediaPicker.FilterClosure?,
-        massFilterClosure: MediaPicker.MassFilterClosure?
+        massFilterClosure: MediaPicker.MassFilterClosure?,
+        preloadedEntry: AllPhotosLibraryCache.Entry? = nil
     ) {
         provider = AllPhotosProvider(
             selectionParamsHolder: selectionParamsHolder,
@@ -34,7 +35,8 @@ final class AllPhotosAlbumSession: ObservableObject {
 
         albumViewModel = AlbumViewModel(
             mediasProvider: provider,
-            mediaTypeForCacheHydration: selectionParamsHolder.mediaType
+            mediaTypeForCacheHydration: selectionParamsHolder.mediaType,
+            preloadedLibraryEntry: preloadedEntry
         )
 
         loadingCancellable = loadingFlag.$value
