@@ -10,8 +10,6 @@ let photoLibraryChangePermissionNotification = Notification.Name(rawValue: "Phot
 
 let photoLibraryChangeLimitedPhotosNotification = Notification.Name(rawValue: "PhotoLibraryChangeLimitedPhotosNotification")
 
-let cameraChangePermissionNotification = Notification.Name(rawValue: "cameraChangePermissionNotification")
-
 let photoLibraryChangePermissionPublisher = NotificationCenter.default
     .publisher(for: photoLibraryChangePermissionNotification)
     .map { _ in }
@@ -19,11 +17,6 @@ let photoLibraryChangePermissionPublisher = NotificationCenter.default
 
 let photoLibraryChangeLimitedPhotosPublisher = NotificationCenter.default
     .publisher(for: photoLibraryChangeLimitedPhotosNotification)
-    .map { _ in }
-    .share()
-
-let cameraChangePermissionPublisher = NotificationCenter.default
-    .publisher(for: cameraChangePermissionNotification)
     .map { _ in }
     .share()
 

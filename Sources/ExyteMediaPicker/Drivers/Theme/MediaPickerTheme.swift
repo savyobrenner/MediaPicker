@@ -27,19 +27,13 @@ extension MediaPickerTheme {
         public let text: Color
         public let albumSelectionBackground: Color
         public let fullscreenPhotoBackground: Color
-        public let cameraBackground: Color
-        public let cameraSelectionBackground: Color
 
         public init(text: Color = Color(uiColor: .label),
                     albumSelectionBackground: Color = Color(uiColor: .systemGroupedBackground),
-                    fullscreenPhotoBackground: Color = Color(uiColor: .systemGroupedBackground),
-                    cameraBackground: Color = .black,
-                    cameraSelectionBackground: Color = .black) {
+                    fullscreenPhotoBackground: Color = Color(uiColor: .systemGroupedBackground)) {
             self.text = text
             self.albumSelectionBackground = albumSelectionBackground
             self.fullscreenPhotoBackground = fullscreenPhotoBackground
-            self.cameraBackground = cameraBackground
-            self.cameraSelectionBackground = cameraSelectionBackground
         }
     }
     

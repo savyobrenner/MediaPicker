@@ -5,37 +5,29 @@
 import Foundation
 import Combine
 
+@MainActor
 final class AlbumsViewModel: ObservableObject {
-    // MARK: - Values
-    // MARK: Public
-    @Published var albums: [AlbumModel] = []
-    @Published var isLoading: Bool = false
+
+    @Published var smartAlbums: [AlbumModel] = []
+    @Published var userAlbums: [AlbumModel] = []
     
     let albumsProvider: AlbumsProviderProtocol
 
-    // MARK: Private
     private var albumsCancellable: AnyCancellable?
     
-    // MARK: - Object life cycle
     init(albumsProvider: AlbumsProviderProtocol) {
         self.albumsProvider = albumsProvider
     }
     
-    // MARK: - Public methods
     func onStart() {
-        isLoading = true
-        
         albumsCancellable = albumsProvider.albums
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                self?.albums = $0
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                    self?.isLoading = false
-                }
+            .sink { [weak self] albums in
+                guard let self = self else { return }
+                self.smartAlbums = albums.filter { $0.kind != nil }
+                self.userAlbums  = albums.filter { $0.kind == nil }
             }
         
-        // TODO: - Investigate glitch
         albumsProvider.reload()
     }
     

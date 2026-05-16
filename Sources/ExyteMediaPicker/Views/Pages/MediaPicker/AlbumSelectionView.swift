@@ -11,11 +11,9 @@ public struct AlbumSelectionView: View {
 
     @ObservedObject var viewModel: MediaPickerViewModel
 
-    @Binding var showingCamera: Bool
     @Binding var isInFullscreen: Bool
     @Binding var currentFullscreenMedia: Media?
 
-    let showingLiveCameraCell: Bool
     let selectionParamsHolder: SelectionParamsHolder
     let filterClosure: MediaPicker.FilterClosure?
     let massFilterClosure: MediaPicker.MassFilterClosure?
@@ -30,10 +28,8 @@ public struct AlbumSelectionView: View {
                 viewModel: AlbumViewModel(
                     mediasProvider: AllPhotosProvider(selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure, showingLoadingCell: $showingLoadingCell)
                 ),
-                showingCamera: $showingCamera,
                 isInFullscreen: $isInFullscreen,
                 currentFullscreenMedia: $currentFullscreenMedia,
-                shouldShowCamera: showingLiveCameraCell,
                 shouldShowLoadingCell: showingLoadingCell,
                 selectionParamsHolder: selectionParamsHolder,
                 shouldDismiss: shouldDismiss
@@ -44,63 +40,98 @@ public struct AlbumSelectionView: View {
                     albumsProvider: viewModel.defaultAlbumsProvider
                 ),
                 mediaPickerViewModel: viewModel,
-                showingCamera: $showingCamera,
                 currentFullscreenMedia: $currentFullscreenMedia,
                 selectionParamsHolder: selectionParamsHolder,
                 filterClosure: filterClosure,
                 massFilterClosure: massFilterClosure
             )
-            .onAppear {
-                viewModel.defaultAlbumsProvider.mediaSelectionType = selectionParamsHolder.mediaType
-            }
         case .album(let album):
             if let albumModel = viewModel.getAlbumModel(album) {
                 AlbumView(
                     viewModel: AlbumViewModel(
                         mediasProvider: AlbumMediasProvider(album: albumModel, selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure, showingLoadingCell: $showingLoadingCell)
                     ),
-                    showingCamera: $showingCamera,
                     isInFullscreen: $isInFullscreen,
                     currentFullscreenMedia: $currentFullscreenMedia,
-                    shouldShowCamera: false,
                     shouldShowLoadingCell: showingLoadingCell,
                     selectionParamsHolder: selectionParamsHolder,
                     shouldDismiss: shouldDismiss
                 )
                 .id(album.id)
             }
-        default:
-            EmptyView()
         }
     }
 }
 
-public struct ModeSwitcher: View {
+/// Native-style title view used in the picker nav bar. Renders the current
+/// album/mode as "TITLE ▾" and, on tap, opens a Menu listing every
+/// available album (mirroring the iOS 26 Photos title dropdown).
+public struct AlbumTitleView: View {
 
-    @Binding var selection: Int
-    var mediaTitle: String
+    @ObservedObject var viewModel: MediaPickerViewModel
+    let mediaTitle: String
+    @EnvironmentObject private var selectionParamsHolder: SelectionParamsHolder
+
+    /// Albums shown in the title dropdown, respecting the current
+    /// `mediaSelectionType` (e.g. no "Videos" smart album when only
+    /// importing photos).
+    private var menuAlbums: [AlbumModel] {
+        viewModel.albums.filter { album in
+            guard let kind = album.kind else { return true }
+            return kind.isAvailable(for: selectionParamsHolder.mediaType)
+        }
+    }
 
     public var body: some View {
-        Picker("", selection: $selection) {
-            Text(mediaTitle)
-                .tag(0)
+        Menu {
+            Button(action: { viewModel.setPickerMode(.photos) }) {
+                Label(mediaTitle, systemImage: "photo.on.rectangle")
+            }
+            Button(action: { viewModel.setPickerMode(.albums) }) {
+                Label(albumsLabel, systemImage: "rectangle.stack")
+            }
             
-            Text("Albums")
-                .tag(1)
+            if !menuAlbums.isEmpty {
+                Divider()
+                ForEach(menuAlbums) { albumModel in
+                    Button {
+                        viewModel.setPickerMode(.album(albumModel.toAlbum()))
+                    } label: {
+                        Label(
+                            albumModel.title ?? "",
+                            systemImage: albumModel.kind?.systemImageName ?? "folder"
+                        )
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(currentTitle)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
-        .pickerStyle(SegmentedPickerStyle())
-        .frame(maxWidth: UIScreen.main.bounds.width / 2)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-            .stroke(Color(uiColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)), lineWidth: 1)
-            .background(Color.clear)
-            .padding(2)
-        )
-        .onAppear {
-            UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)
-            UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)], for: .selected)
-            UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(red: 0.949, green: 0.698, blue: 0.188, alpha: 1)], for: .normal)
-            UISegmentedControl.appearance().backgroundColor = .clear
+    }
+    
+    private var currentTitle: String {
+        switch viewModel.internalPickerMode {
+        case .photos:
+            return mediaTitle
+        case .albums:
+            return albumsLabel
+        case .album(let album):
+            return album.title ?? mediaTitle
         }
+    }
+    
+    private var albumsLabel: String {
+        let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
+        return isPortuguese ? "Álbuns" : "Albums"
     }
 }
