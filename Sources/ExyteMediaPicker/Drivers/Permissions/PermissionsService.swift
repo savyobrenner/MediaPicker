@@ -29,6 +29,8 @@ final class PermissionsService: ObservableObject {
     static func requestPermission(_ permissionGrantedClosure: @escaping ()->()) {
         PHPhotoLibrary.requestAuthorization { status in
             if status == .authorized || status == .limited {
+                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: .photo)
+                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: .photoAndVideo)
                 permissionGrantedClosure()
             }
         }

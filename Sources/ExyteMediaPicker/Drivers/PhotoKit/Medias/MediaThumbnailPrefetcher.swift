@@ -19,7 +19,7 @@ enum MediaThumbnailPrefetcher {
     static func prefetchThumbnailGridPriming(
         models: [AssetMediaModel],
         columnsCount: Int,
-        maxAssets: Int = 96
+        maxAssets: Int = 200
     ) {
         guard !models.isEmpty, columnsCount > 0 else { return }
         let bounds = UIScreen.main.bounds

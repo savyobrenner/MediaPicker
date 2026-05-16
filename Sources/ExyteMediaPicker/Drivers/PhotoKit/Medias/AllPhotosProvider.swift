@@ -10,6 +10,7 @@ import SwiftUI
 final class AllPhotosProvider: BaseMediasProvider {
 
     private var lastDeliveredFingerprint: String?
+    private var warmupReadyCancellable: AnyCancellable?
     private static let publishBatchSize = 180
 
     override func reload() {
@@ -26,6 +27,22 @@ final class AllPhotosProvider: BaseMediasProvider {
 #if os(iOS)
             MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: entry.models, columnsCount: 3)
 #endif
+            return
+        }
+
+        if MediaPickerWarmup.isWarmingUp(mediaType: mediaType) {
+            warmupReadyCancellable = MediaPickerWarmup.libraryCacheReadyPublisher
+                .filter { $0 == mediaType }
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] readyType in
+                    guard let self, readyType == mediaType,
+                          let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) else { return }
+                    self.publishFinalSnapshot(entry.models)
+#if os(iOS)
+                    MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: entry.models, columnsCount: 3)
+#endif
+                }
+            return
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in

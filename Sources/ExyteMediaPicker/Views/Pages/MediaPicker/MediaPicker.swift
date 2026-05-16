@@ -65,6 +65,8 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
         self.onChange = onChange
         self.albumSelectionBuilder = albumSelectionBuilder
         self.mediaTitle = mediaTitle
+
+        MediaPickerWarmup.installAutomaticWarmupWhenLibraryAuthorized()
     }
 
     public var body: some View {
@@ -84,7 +86,7 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                     pickerMode?.wrappedValue = mode
                 }
                 viewModel.onStart()
-                MediaPickerWarmup.prepareLibraryCache(mediaType: selectionParamsHolder.mediaType)
+                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: selectionParamsHolder.mediaType)
             }
             .onChange(of: viewModel.albums) {
                 self.albums = $0.map { $0.toAlbum() }

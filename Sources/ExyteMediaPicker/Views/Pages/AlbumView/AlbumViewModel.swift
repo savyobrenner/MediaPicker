@@ -44,6 +44,9 @@ final class AlbumViewModel: ObservableObject {
             applyFullLibraryPayload(models: entry.models, sections: entry.sections)
             isAwaitingInitialLibraryLoad = false
             isStreamingLibraryIndex = false
+#if os(iOS)
+            MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: entry.models, columnsCount: 3, maxAssets: 200)
+#endif
         }
         onStart()
     }
@@ -157,6 +160,9 @@ final class AlbumViewModel: ObservableObject {
         layoutGeneration &+= 1
         rebuildMasonryColumns(count: 3)
         isStreamingLibraryIndex = false
+#if os(iOS)
+        MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: models, columnsCount: 3)
+#endif
     }
 
     func masonryDistribution(forColumnsCount columnsCount: Int) -> [[AssetMediaModel]] {
