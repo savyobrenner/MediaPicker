@@ -15,22 +15,27 @@ struct AlbumDateScrubberOverlay: View {
     @State private var scrubLabel: String = ""
     @State private var scrubLocationY: CGFloat = 0
     @State private var isScrubbing: Bool = false
-    @State private var pendingTargetSection: AlbumDateSection?
+    @State private var lastScrolledSectionId: String?
+    @State private var lastScrollTimestamp: CFAbsoluteTime = 0
+    @State private var lastCommittedScrollIndex: Int = 0
+    @State private var fingerTargetIndex: Int = 0
     @State private var scrollGeneration: UInt = 0
     @State private var activeScrollTask: Task<Void, Never>?
+
+    /// Live scrub: at most this many library indices per scroll tick (avoids 2026→2022 in one frame).
+    private let maxLiveScrollStep: Int = 320
+    private let liveScrollThrottleSeconds: CFAbsoluteTime = 0.14
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             DateScrubber(
                 sections: sections,
-                onScrub: { section, localY in
-                    handleScrub(section: section, localY: localY)
+                totalAssetCount: models.count,
+                onScrub: { section, localY, targetIndex in
+                    handleScrub(section: section, localY: localY, targetIndex: targetIndex)
                 },
                 onScrubEnd: {
-                    commitScrollOnScrubEnd()
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        isScrubbing = false
-                    }
+                    finishScrub()
                 }
             )
 
@@ -55,61 +60,98 @@ struct AlbumDateScrubberOverlay: View {
         }
     }
 
-    private func handleScrub(section: AlbumDateSection, localY: CGFloat) {
+    private func handleScrub(section: AlbumDateSection, localY: CGFloat, targetIndex: Int) {
         scrubLocationY = localY
         scrubLabel = section.title
-        pendingTargetSection = section
+        fingerTargetIndex = targetIndex
+
         if !isScrubbing {
             isScrubbing = true
         }
-        // Grid scroll happens only on scrub end — live scrollTo on every bucket caused hangs.
+
+        let isNewSection = section.id != lastScrolledSectionId
+        let now = CFAbsoluteTimeGetCurrent()
+        let throttleElapsed = now - lastScrollTimestamp >= liveScrollThrottleSeconds
+        guard isNewSection || throttleElapsed else { return }
+
+        lastScrolledSectionId = section.id
+        lastScrollTimestamp = now
+        scheduleScroll(toward: targetIndex, live: true)
     }
 
-    private func commitScrollOnScrubEnd() {
-        guard let target = pendingTargetSection else { return }
-        pendingTargetSection = nil
+    private func finishScrub() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            isScrubbing = false
+        }
+        lastScrolledSectionId = nil
 
+        guard fingerTargetIndex >= 0 else { return }
+        scheduleScroll(toward: fingerTargetIndex, live: false)
+    }
+
+    private func scheduleScroll(toward targetIndex: Int, live: Bool) {
         activeScrollTask?.cancel()
         scrollGeneration &+= 1
         let generation = scrollGeneration
 
         activeScrollTask = Task { @MainActor in
-#if os(iOS)
-            MediaThumbnailPrefetcher.prefetchWindow(
-                models: models,
-                around: target.startIndex,
-                columnsCount: columnsCount
+            let steps = scrollIndexSteps(
+                from: lastCommittedScrollIndex,
+                to: targetIndex,
+                live: live
             )
-            // Let PhotoKit start caching before LazyVStack materializes the jump path.
-            try? await Task.sleep(nanoseconds: 40_000_000)
+
+            for stepIndex in steps {
+                guard !Task.isCancelled, generation == scrollGeneration else { return }
+                guard let section = sections.section(containingAssetIndex: stepIndex) else { continue }
+
+#if os(iOS)
+                MediaThumbnailPrefetcher.prefetchWindow(
+                    models: models,
+                    around: stepIndex,
+                    columnsCount: columnsCount
+                )
+                if !live, steps.count > 1 {
+                    try? await Task.sleep(nanoseconds: 70_000_000)
+                } else if live {
+                    try? await Task.sleep(nanoseconds: 16_000_000)
+                }
 #endif
-            guard !Task.isCancelled, generation == scrollGeneration else { return }
-            performScroll(to: target, generation: generation)
+                guard !Task.isCancelled, generation == scrollGeneration else { return }
+                scrollOnce(to: section.anchorAssetId)
+                lastCommittedScrollIndex = stepIndex
+            }
         }
     }
 
-    @MainActor
-    private func performScroll(to target: AlbumDateSection, generation: UInt) {
-        let targetIndex = target.startIndex
+    /// Live scrub moves in bounded steps; release walks the rest of the way in chunks.
+    private func scrollIndexSteps(from: Int, to: Int, live: Bool) -> [Int] {
+        guard from != to else { return [to] }
 
-        if targetIndex < 200 {
-            scrollOnce(to: target.anchorAssetId)
-            return
+        if !live {
+            return chunkedSteps(from: from, to: to, chunkSize: 900)
         }
 
-        let waypointIndex = targetIndex / 2
-        let waypoint = sections.last(where: { $0.startIndex <= waypointIndex && $0.id != target.id })
+        let delta = to - from
+        if abs(delta) <= maxLiveScrollStep {
+            return [to]
+        }
+        return [from + (delta > 0 ? maxLiveScrollStep : -maxLiveScrollStep)]
+    }
 
-        if let waypoint {
-            scrollOnce(to: waypoint.anchorAssetId)
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                guard !Task.isCancelled, generation == scrollGeneration else { return }
-                scrollOnce(to: target.anchorAssetId)
+    private func chunkedSteps(from: Int, to: Int, chunkSize: Int) -> [Int] {
+        var steps: [Int] = []
+        var current = from
+        while current != to {
+            let remaining = to - current
+            if abs(remaining) <= chunkSize {
+                current = to
+            } else {
+                current += remaining > 0 ? chunkSize : -chunkSize
             }
-        } else {
-            scrollOnce(to: target.anchorAssetId)
+            steps.append(current)
         }
+        return steps
     }
 
     private func scrollOnce(to assetId: String) {
