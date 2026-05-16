@@ -2,8 +2,6 @@
 //  AlbumDateScrubberOverlay.swift
 //  ExyteMediaPicker
 //
-//  Label follows the finger; grid scrolls on section changes (throttled) and once more on release.
-//
 
 import SwiftUI
 
@@ -17,7 +15,7 @@ struct AlbumDateScrubberOverlay: View {
     @State private var isScrubbing: Bool = false
     @State private var lastScrolledSectionId: String?
     @State private var lastScrollTimestamp: CFAbsoluteTime = 0
-    @State private var pendingScrollTargetId: String?
+    @State private var pendingScrollAssetId: String?
 
     private let scrollThrottleSeconds: CFAbsoluteTime = 0.1
 
@@ -61,7 +59,7 @@ struct AlbumDateScrubberOverlay: View {
     private func handleScrub(section: AlbumDateSection, localY: CGFloat) {
         scrubLocationY = localY
         scrubLabel = section.title
-        pendingScrollTargetId = section.scrollTargetId
+        pendingScrollAssetId = section.anchorAssetId
         if !isScrubbing {
             isScrubbing = true
         }
@@ -77,12 +75,12 @@ struct AlbumDateScrubberOverlay: View {
     }
 
     private func commitScrollIfNeeded(force: Bool) {
-        guard let targetId = pendingScrollTargetId else { return }
+        guard let assetId = pendingScrollAssetId else { return }
         _ = force
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            scrollProxy.scrollTo(targetId, anchor: .top)
+            scrollProxy.scrollTo(assetId, anchor: .top)
         }
     }
 }

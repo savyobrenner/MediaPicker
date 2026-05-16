@@ -13,7 +13,6 @@ struct AlbumDateSection: Identifiable, Equatable {
     let anchorAssetId: String
     let startIndex: Int
 
-    /// Stable `ScrollViewReader` target (prefer over raw asset ids).
     var scrollTargetId: String { "album-section-\(id)" }
 }
 
@@ -25,15 +24,15 @@ final class AlbumViewModel: ObservableObject {
     @Published var sections: [AlbumDateSection] = []
 
     @Published private(set) var isAwaitingInitialLibraryLoad = true
+    @Published private(set) var masonryColumns: [[AssetMediaModel]] = []
 
     let mediasProvider: MediasProviderProtocol
 
     private var mediaCancellable: AnyCancellable?
     private var applyGeneration: UInt = 0
-
-    /// Masonry columns per date section (small chunks — not the whole library).
-    private var sectionMasonryCache: [String: [[AssetMediaModel]]] = [:]
-    private var sectionMasonryColumnsCount: Int = 0
+    private var layoutGeneration: UInt = 0
+    private var masonryColumnsCount: Int = 3
+    private var masonryBuildTask: Task<Void, Never>?
 
     init(
         mediasProvider: MediasProviderProtocol,
@@ -64,7 +63,7 @@ final class AlbumViewModel: ObservableObject {
         } else {
             assetMediaModels = []
             sections = []
-            clearSectionMasonryCache()
+            masonryColumns = []
             isAwaitingInitialLibraryLoad = true
         }
     }
@@ -80,33 +79,10 @@ final class AlbumViewModel: ObservableObject {
         mediasProvider.reload()
     }
 
-    func items(forSectionAt sectionIndex: Int) -> [AssetMediaModel] {
-        guard sections.indices.contains(sectionIndex) else { return [] }
-        let start = sections[sectionIndex].startIndex
-        let end: Int
-        if sectionIndex + 1 < sections.count {
-            end = sections[sectionIndex + 1].startIndex
-        } else {
-            end = assetMediaModels.count
-        }
-        guard start < end, end <= assetMediaModels.count else { return [] }
-        return Array(assetMediaModels[start..<end])
-    }
-
-    func masonryColumns(forSectionAt sectionIndex: Int, columnsCount: Int) -> [[AssetMediaModel]] {
-        guard sections.indices.contains(sectionIndex), columnsCount > 0 else { return [] }
-        let section = sections[sectionIndex]
-        if sectionMasonryColumnsCount != columnsCount {
-            clearSectionMasonryCache()
-            sectionMasonryColumnsCount = columnsCount
-        }
-        if let cached = sectionMasonryCache[section.id] {
-            return cached
-        }
-        let items = items(forSectionAt: sectionIndex)
-        let columns = Self.distributeIntoColumns(items, count: columnsCount)
-        sectionMasonryCache[section.id] = columns
-        return columns
+    func rebuildMasonryColumns(count: Int) {
+        guard count > 0, count != masonryColumnsCount || masonryColumns.isEmpty else { return }
+        masonryColumnsCount = count
+        scheduleMasonryBuild(models: assetMediaModels, columnsCount: count)
     }
 
     private func handleIncomingModels(_ models: [AssetMediaModel]) {
@@ -114,7 +90,7 @@ final class AlbumViewModel: ObservableObject {
             isAwaitingInitialLibraryLoad = false
             assetMediaModels = []
             sections = []
-            clearSectionMasonryCache()
+            masonryColumns = []
             return
         }
 
@@ -141,18 +117,27 @@ final class AlbumViewModel: ObservableObject {
     private func applyFullLibraryPayload(models: [AssetMediaModel], sections: [AlbumDateSection]) {
         assetMediaModels = models
         self.sections = sections
-        clearSectionMasonryCache()
+        layoutGeneration &+= 1
+        scheduleMasonryBuild(models: models, columnsCount: masonryColumnsCount)
 #if os(iOS)
         MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: models)
 #endif
     }
 
-    private func clearSectionMasonryCache() {
-        sectionMasonryCache.removeAll()
-        sectionMasonryColumnsCount = 0
+    private func scheduleMasonryBuild(models: [AssetMediaModel], columnsCount: Int) {
+        masonryBuildTask?.cancel()
+        let generation = layoutGeneration
+        masonryBuildTask = Task.detached(priority: .userInitiated) { [weak self] in
+            let columns = Self.distributeIntoColumns(models, count: max(columnsCount, 1))
+            await MainActor.run {
+                guard let self, !Task.isCancelled, generation == self.layoutGeneration else { return }
+                self.masonryColumns = columns
+            }
+        }
     }
 
     private static func distributeIntoColumns(_ items: [AssetMediaModel], count: Int) -> [[AssetMediaModel]] {
+        guard count > 0 else { return [items] }
         var columns: [[AssetMediaModel]] = Array(repeating: [], count: count)
         var heights: [Double] = Array(repeating: 0, count: count)
 
@@ -177,6 +162,7 @@ final class AlbumViewModel: ObservableObject {
     }
 
     deinit {
+        masonryBuildTask?.cancel()
         mediasProvider.cancel()
         mediaCancellable = nil
     }

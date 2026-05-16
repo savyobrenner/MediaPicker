@@ -1,8 +1,8 @@
 //
 //  Created by Alex.M on 27.05.2022.
 //
-//  Grid is split by **date section** so `LazyVStack` / `LazyVGrid` only materialize
-//  one bucket at a time. The right-edge scrubber scrolls to each section anchor.
+//  Continuous Pinterest-style grid (one masonry run). Date sections exist only for
+//  the invisible scrubber — no visual breaks between months.
 //
 
 import SwiftUI
@@ -68,12 +68,10 @@ struct AlbumView: View {
                             .font(.title3)
                             .foregroundColor(.secondary)
                             .padding(.top, 80)
-                    } else if viewModel.sections.isEmpty {
-                        legacyFlatGridContent
                     } else if useMasonry {
-                        sectionedMasonryContent
+                        continuousMasonryContent
                     } else {
-                        sectionedSquareGridContent
+                        continuousSquareGridContent
                     }
                 }
                 .background(theme.main.albumSelectionBackground.ignoresSafeArea())
@@ -104,16 +102,32 @@ struct AlbumView: View {
                 )
             }
         }
+        .onChange(of: columnsCount) { newCount in
+            viewModel.rebuildMasonryColumns(count: newCount)
+        }
     }
-    
-    // MARK: - Sectioned layouts (preferred)
 
-    private var sectionedMasonryContent: some View {
-        LazyVStack(alignment: .leading, spacing: cellSpacing) {
-            ForEach(Array(viewModel.sections.enumerated()), id: \.element.id) { sectionIndex, section in
-                sectionedMasonrySection(sectionIndex: sectionIndex, section: section)
-                    .id(section.scrollTargetId)
+    // MARK: - Continuous layouts
+
+    private var continuousMasonryContent: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: cellSpacing) {
+                ForEach(viewModel.masonryColumns.indices, id: \.self) { columnIndex in
+                    LazyVStack(spacing: cellSpacing) {
+                        ForEach(viewModel.masonryColumns[columnIndex]) { assetMediaModel in
+                            cellView(assetMediaModel)
+                                .id(assetMediaModel.id)
+                                .onTapGesture {
+                                    onTap(assetMediaModel: assetMediaModel)
+                                }
+                                .onLongPressGesture(minimumDuration: 0.35) {
+                                    openFullscreen(assetMediaModel: assetMediaModel)
+                                }
+                        }
+                    }
+                }
             }
+            .padding(.horizontal, cellSpacing)
 
             if shouldShowLoadingCell {
                 ProgressView()
@@ -121,47 +135,23 @@ struct AlbumView: View {
                     .padding()
             }
         }
-        .padding(.horizontal, cellSpacing)
     }
 
-    @ViewBuilder
-    private func sectionedMasonrySection(sectionIndex: Int, section: AlbumDateSection) -> some View {
-        let columns = viewModel.masonryColumns(forSectionAt: sectionIndex, columnsCount: columnsCount)
-        HStack(alignment: .top, spacing: cellSpacing) {
-            ForEach(columns.indices, id: \.self) { columnIndex in
-                LazyVStack(spacing: cellSpacing) {
-                    ForEach(columns[columnIndex]) { assetMediaModel in
-                        cellView(assetMediaModel)
-                            .id(assetMediaModel.id)
-                            .onTapGesture {
-                                onTap(assetMediaModel: assetMediaModel)
-                            }
-                            .onLongPressGesture(minimumDuration: 0.35) {
-                                openFullscreen(assetMediaModel: assetMediaModel)
-                            }
-                    }
+    private var continuousSquareGridContent: some View {
+        VStack(spacing: 0) {
+            LazyVGrid(columns: gridColumns, alignment: .leading, spacing: cellSpacing) {
+                ForEach(viewModel.assetMediaModels) { assetMediaModel in
+                    cellView(assetMediaModel)
+                        .id(assetMediaModel.id)
+                        .onTapGesture {
+                            onTap(assetMediaModel: assetMediaModel)
+                        }
+                        .onLongPressGesture(minimumDuration: 0.35) {
+                            openFullscreen(assetMediaModel: assetMediaModel)
+                        }
                 }
             }
-        }
-    }
-
-    private var sectionedSquareGridContent: some View {
-        LazyVStack(alignment: .leading, spacing: cellSpacing) {
-            ForEach(Array(viewModel.sections.enumerated()), id: \.element.id) { sectionIndex, section in
-                LazyVGrid(columns: gridColumns, alignment: .leading, spacing: cellSpacing) {
-                    ForEach(viewModel.items(forSectionAt: sectionIndex)) { assetMediaModel in
-                        cellView(assetMediaModel)
-                            .id(assetMediaModel.id)
-                            .onTapGesture {
-                                onTap(assetMediaModel: assetMediaModel)
-                            }
-                            .onLongPressGesture(minimumDuration: 0.35) {
-                                openFullscreen(assetMediaModel: assetMediaModel)
-                            }
-                    }
-                }
-                .id(section.scrollTargetId)
-            }
+            .padding(.horizontal, cellSpacing)
 
             if shouldShowLoadingCell {
                 ProgressView()
@@ -169,29 +159,6 @@ struct AlbumView: View {
                     .frame(height: 80)
             }
         }
-        .padding(.horizontal, cellSpacing)
-    }
-
-    /// Fallback when sections are not ready yet.
-    private var legacyFlatGridContent: some View {
-        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: cellSpacing) {
-            ForEach(viewModel.assetMediaModels) { assetMediaModel in
-                cellView(assetMediaModel)
-                    .id(assetMediaModel.id)
-                    .onTapGesture {
-                        onTap(assetMediaModel: assetMediaModel)
-                    }
-                    .onLongPressGesture(minimumDuration: 0.35) {
-                        openFullscreen(assetMediaModel: assetMediaModel)
-                    }
-            }
-            if shouldShowLoadingCell {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 80)
-            }
-        }
-        .padding(.horizontal, cellSpacing)
     }
     
     // MARK: - Subviews

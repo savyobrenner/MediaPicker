@@ -2,8 +2,7 @@
 //  DateScrubber.swift
 //  ExyteMediaPicker
 //
-//  Right-edge scrubber. Finger position is mapped with a power curve so recent
-//  photos occupy more of the rail — small movements stay near “today”.
+//  Invisible right-edge touch rail; the date pill is drawn by AlbumDateScrubberOverlay.
 //
 
 import SwiftUI
@@ -12,28 +11,18 @@ struct DateScrubber: View {
 
     static let width: CGFloat = 22
 
-    /// Exponent > 1 compresses the bottom of the rail (older dates need more drag).
     private static let progressBiasExponent: CGFloat = 1.75
 
     let sections: [AlbumDateSection]
     var onScrub: (AlbumDateSection, CGFloat) -> Void
     var onScrubEnd: () -> Void
 
-    @State private var isDragging = false
-
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                Capsule()
-                    .fill(Color.secondary.opacity(isDragging ? 0.7 : 0.25))
-                    .frame(width: isDragging ? 3 : 2)
-                    .padding(.vertical, 6)
-                    .animation(.easeOut(duration: 0.15), value: isDragging)
-            }
-            .frame(width: Self.width, height: geo.size.height)
-            .contentShape(Rectangle())
-            .gesture(scrubGesture(railHeight: geo.size.height))
+            Color.clear
+                .frame(width: Self.width, height: geo.size.height)
+                .contentShape(Rectangle())
+                .gesture(scrubGesture(railHeight: geo.size.height))
         }
         .frame(width: Self.width)
     }
@@ -42,7 +31,6 @@ struct DateScrubber: View {
         DragGesture(minimumDistance: 6)
             .onChanged { value in
                 guard !sections.isEmpty, railHeight > 0 else { return }
-                isDragging = true
 
                 let clampedY = max(0, min(value.location.y, railHeight))
                 let linearProgress = clampedY / railHeight
@@ -52,7 +40,6 @@ struct DateScrubber: View {
                 onScrub(sections[index], clampedY)
             }
             .onEnded { _ in
-                isDragging = false
                 onScrubEnd()
             }
     }
