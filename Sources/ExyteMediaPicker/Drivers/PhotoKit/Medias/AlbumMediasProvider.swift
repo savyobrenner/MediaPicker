@@ -23,21 +23,32 @@ final class AlbumMediasProvider: BaseMediasProvider {
     }
 
     func reloadInternal() {
-        // Same rationale as AllPhotosProvider: PHAsset.fetchAssets(in:)
-        // plus the synchronous mapping loop can block the main thread on
-        // big albums. Move the heavy work off the main queue.
         let collection = album.source
         let mediaType = selectionParamsHolder.mediaType
+        let cacheKey = AlbumMediasLibraryCache.shared.cacheKey(albumId: album.id, mediaType: mediaType)
+
+        if let entry = AlbumMediasLibraryCache.shared.entry(for: cacheKey) {
+            filterAndPublish(assets: entry.models)
+#if os(iOS)
+            MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: entry.models)
+#endif
+            return
+        }
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
             let options = PHFetchOptions()
             options.sortDescriptors = [
                 NSSortDescriptor(key: "modificationDate", ascending: false)
             ]
             let fetchResult = PHAsset.fetchAssets(in: collection, options: options)
             let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
+            AlbumMediasLibraryCache.shared.store(models: assets, key: cacheKey)
             DispatchQueue.main.async {
                 self.filterAndPublish(assets: assets)
+#if os(iOS)
+                MediaThumbnailPrefetcher.primeFirstScreenIfNeeded(models: assets)
+#endif
             }
         }
     }

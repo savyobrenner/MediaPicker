@@ -15,6 +15,7 @@ final class MediaPickerViewModel: ObservableObject {
     var shouldUpdatePickerMode: (MediaPickerMode)->() = {_ in}
 
     let defaultAlbumsProvider = DefaultAlbumsProvider()
+    let albumGridSessionStore = AlbumGridSessionStore()
     private let watcher = PhotoLibraryChangePermissionWatcher()
     private var albumsCancellable: AnyCancellable?
     
@@ -73,6 +74,10 @@ final class MediaPickerViewModel: ObservableObject {
             guard let model = albumModel(kind: kind) else { return }
             setPickerMode(.album(model.toAlbum()))
         }
+    }
+
+    func clearAlbumGridSessions() {
+        albumGridSessionStore.clearAll()
     }
 
     private static func preferredShortcutKinds(for mediaType: MediaSelectionType) -> [SmartAlbumKind] {

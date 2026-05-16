@@ -1,8 +1,5 @@
 //
 //  AlbumSelectionView.swift
-//  
-//
-//  Created by Alisa Mylnikova on 08.02.2023.
 //
 
 import SwiftUI
@@ -19,6 +16,16 @@ public struct AlbumSelectionView: View {
     let massFilterClosure: MediaPicker.MassFilterClosure?
     var shouldDismiss: ()->()
 
+  private var isPhotosMode: Bool {
+    if case .photos = viewModel.internalPickerMode { return true }
+    return false
+  }
+
+  private var isAlbumsListMode: Bool {
+    if case .albums = viewModel.internalPickerMode { return true }
+    return false
+  }
+
     public var body: some View {
         VStack(spacing: 0) {
             if selectionParamsHolder.showsAlbumQuickAccessBar, !isInFullscreen {
@@ -26,23 +33,42 @@ public struct AlbumSelectionView: View {
                 Divider()
                     .opacity(0.35)
             }
-            pickerContent
+
+            ZStack {
+                allPhotosLayer
+                albumsListLayer
+                openedAlbumLayers
+            }
+            .onChange(of: viewModel.internalPickerMode) { _ in
+                ensureActiveAlbumSessionIfNeeded()
+            }
+            .onAppear {
+                ensureActiveAlbumSessionIfNeeded()
+            }
         }
     }
 
+    private var allPhotosLayer: some View {
+        let session = viewModel.albumGridSessionStore.allPhotosSession(
+            selectionParamsHolder: selectionParamsHolder,
+            filterClosure: filterClosure,
+            massFilterClosure: massFilterClosure
+        )
+        return AllPhotosAlbumRoute(
+            session: session,
+            isInFullscreen: $isInFullscreen,
+            currentFullscreenMedia: $currentFullscreenMedia,
+            selectionParamsHolder: selectionParamsHolder,
+            shouldDismiss: shouldDismiss
+        )
+        .opacity(isPhotosMode ? 1 : 0)
+        .allowsHitTesting(isPhotosMode)
+        .accessibilityHidden(!isPhotosMode)
+    }
+
     @ViewBuilder
-    private var pickerContent: some View {
-        switch viewModel.internalPickerMode {
-        case .photos:
-            AllPhotosAlbumRoute(
-                selectionParamsHolder: selectionParamsHolder,
-                filterClosure: filterClosure,
-                massFilterClosure: massFilterClosure,
-                isInFullscreen: $isInFullscreen,
-                currentFullscreenMedia: $currentFullscreenMedia,
-                shouldDismiss: shouldDismiss
-            )
-        case .albums:
+    private var albumsListLayer: some View {
+        if isAlbumsListMode {
             AlbumsView(
                 viewModel: AlbumsViewModel(
                     albumsProvider: viewModel.defaultAlbumsProvider
@@ -53,37 +79,51 @@ public struct AlbumSelectionView: View {
                 filterClosure: filterClosure,
                 massFilterClosure: massFilterClosure
             )
-        case .album(let album):
-            if let albumModel = viewModel.getAlbumModel(album) {
-                AlbumView(
-                    viewModel: AlbumViewModel(
-                        mediasProvider: AlbumMediasProvider(album: albumModel, selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure, showingLoadingCell: .constant(false)),
-                        mediaTypeForCacheHydration: nil
-                    ),
-                    isInFullscreen: $isInFullscreen,
-                    currentFullscreenMedia: $currentFullscreenMedia,
-                    shouldShowLoadingCell: false,
-                    selectionParamsHolder: selectionParamsHolder,
-                    shouldDismiss: shouldDismiss
-                )
-                .id(album.id)
-            }
+        }
+    }
+
+    private func ensureActiveAlbumSessionIfNeeded() {
+        guard case .album(let album) = viewModel.internalPickerMode,
+              let albumModel = viewModel.getAlbumModel(album) else { return }
+        _ = viewModel.albumGridSessionStore.albumSession(
+            for: albumModel,
+            selectionParamsHolder: selectionParamsHolder,
+            filterClosure: filterClosure,
+            massFilterClosure: massFilterClosure
+        )
+    }
+
+    @ViewBuilder
+    private var openedAlbumLayers: some View {
+        let activeAlbumId: String? = {
+            if case .album(let album) = viewModel.internalPickerMode { return album.id }
+            return nil
+        }()
+
+        ForEach(viewModel.albumGridSessionStore.openedAlbumSessions, id: \.id) { entry in
+            let isActive = entry.id == activeAlbumId
+            AlbumView(
+                viewModel: entry.session.albumViewModel,
+                isInFullscreen: $isInFullscreen,
+                currentFullscreenMedia: $currentFullscreenMedia,
+                shouldShowLoadingCell: false,
+                selectionParamsHolder: selectionParamsHolder,
+                shouldDismiss: shouldDismiss
+            )
+            .opacity(isActive ? 1 : 0)
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
         }
     }
 }
 
-/// Native-style title view used in the picker nav bar. Renders the current
-/// album/mode as "TITLE ▾" and, on tap, opens a Menu listing every
-/// available album (mirroring the iOS 26 Photos title dropdown).
+/// Native-style title view used in the picker nav bar.
 public struct AlbumTitleView: View {
 
     @ObservedObject var viewModel: MediaPickerViewModel
     let mediaTitle: String
     @EnvironmentObject private var selectionParamsHolder: SelectionParamsHolder
 
-    /// Albums shown in the title dropdown, respecting the current
-    /// `mediaSelectionType` (e.g. no "Videos" smart album when only
-    /// importing photos).
     private var menuAlbums: [AlbumModel] {
         viewModel.albums.filter { album in
             guard let kind = album.kind else { return true }
@@ -99,7 +139,7 @@ public struct AlbumTitleView: View {
             Button(action: { viewModel.setPickerMode(.albums) }) {
                 Label(albumsLabel, systemImage: "rectangle.stack")
             }
-            
+
             if !menuAlbums.isEmpty {
                 Divider()
                 ForEach(menuAlbums) { albumModel in
@@ -127,7 +167,7 @@ public struct AlbumTitleView: View {
             .contentShape(Rectangle())
         }
     }
-    
+
     private var currentTitle: String {
         switch viewModel.internalPickerMode {
         case .photos:
@@ -138,7 +178,7 @@ public struct AlbumTitleView: View {
             return album.title ?? mediaTitle
         }
     }
-    
+
     private var albumsLabel: String {
         let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
         return isPortuguese ? "Álbuns" : "Albums"

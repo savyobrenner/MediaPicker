@@ -2,8 +2,7 @@
 //  AlbumDateScrubberOverlay.swift
 //  ExyteMediaPicker
 //
-//  While dragging: floating date label tracks the finger. The grid scrolls once
-//  when the finger lifts (avoids hammering `scrollTo` on huge libraries).
+//  Label follows the finger; grid scrolls on section changes (throttled) and once more on release.
 //
 
 import SwiftUI
@@ -16,7 +15,11 @@ struct AlbumDateScrubberOverlay: View {
     @State private var scrubLabel: String = ""
     @State private var scrubLocationY: CGFloat = 0
     @State private var isScrubbing: Bool = false
-    @State private var pendingScrollAssetId: String?
+    @State private var lastScrolledSectionId: String?
+    @State private var lastScrollTimestamp: CFAbsoluteTime = 0
+    @State private var pendingScrollTargetId: String?
+
+    private let scrollThrottleSeconds: CFAbsoluteTime = 0.1
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -26,10 +29,11 @@ struct AlbumDateScrubberOverlay: View {
                     handleScrub(section: section, localY: localY)
                 },
                 onScrubEnd: {
-                    commitPendingScroll()
+                    commitScrollIfNeeded(force: true)
                     withAnimation(.easeOut(duration: 0.2)) {
                         isScrubbing = false
                     }
+                    lastScrolledSectionId = nil
                 }
             )
 
@@ -57,19 +61,28 @@ struct AlbumDateScrubberOverlay: View {
     private func handleScrub(section: AlbumDateSection, localY: CGFloat) {
         scrubLocationY = localY
         scrubLabel = section.title
-        pendingScrollAssetId = section.anchorAssetId
+        pendingScrollTargetId = section.scrollTargetId
         if !isScrubbing {
             isScrubbing = true
         }
+
+        let isNewSection = section.id != lastScrolledSectionId
+        let now = CFAbsoluteTimeGetCurrent()
+        let throttleElapsed = now - lastScrollTimestamp >= scrollThrottleSeconds
+        guard isNewSection || throttleElapsed else { return }
+
+        lastScrolledSectionId = section.id
+        lastScrollTimestamp = now
+        commitScrollIfNeeded(force: false)
     }
 
-    private func commitPendingScroll() {
-        guard let assetId = pendingScrollAssetId else { return }
-        pendingScrollAssetId = nil
+    private func commitScrollIfNeeded(force: Bool) {
+        guard let targetId = pendingScrollTargetId else { return }
+        _ = force
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            scrollProxy.scrollTo(assetId, anchor: .top)
+            scrollProxy.scrollTo(targetId, anchor: .top)
         }
     }
 }

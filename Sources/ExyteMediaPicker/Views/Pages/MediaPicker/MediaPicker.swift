@@ -117,6 +117,7 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                 viewModel.defaultAlbumsProvider.reload()
             }
             .onDisappear {
+                viewModel.clearAlbumGridSessions()
                 MediaPickerLifecycle.releaseResourcesAfterPickerDismissed()
             }
     }

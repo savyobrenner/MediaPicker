@@ -13,7 +13,7 @@ struct DateScrubber: View {
     static let width: CGFloat = 22
 
     /// Exponent > 1 compresses the bottom of the rail (older dates need more drag).
-    private static let progressBiasExponent: CGFloat = 2.35
+    private static let progressBiasExponent: CGFloat = 1.75
 
     let sections: [AlbumDateSection]
     var onScrub: (AlbumDateSection, CGFloat) -> Void

@@ -19,5 +19,6 @@ public enum MediaPickerLifecycle {
     /// Drops the in-memory PhotoKit index (~tens of MB on large libraries). Reopen will rebuild the index.
     public static func clearLibraryIndexCache() {
         AllPhotosLibraryCache.shared.clear()
+        AlbumMediasLibraryCache.shared.clear()
     }
 }

@@ -112,7 +112,7 @@ struct AlbumView: View {
         LazyVStack(alignment: .leading, spacing: cellSpacing) {
             ForEach(Array(viewModel.sections.enumerated()), id: \.element.id) { sectionIndex, section in
                 sectionedMasonrySection(sectionIndex: sectionIndex, section: section)
-                    .id(section.anchorAssetId)
+                    .id(section.scrollTargetId)
             }
 
             if shouldShowLoadingCell {
@@ -160,7 +160,7 @@ struct AlbumView: View {
                             }
                     }
                 }
-                .id(section.anchorAssetId)
+                .id(section.scrollTargetId)
             }
 
             if shouldShowLoadingCell {

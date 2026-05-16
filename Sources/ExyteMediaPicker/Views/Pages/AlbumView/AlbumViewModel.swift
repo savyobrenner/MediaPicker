@@ -12,6 +12,9 @@ struct AlbumDateSection: Identifiable, Equatable {
     let title: String
     let anchorAssetId: String
     let startIndex: Int
+
+    /// Stable `ScrollViewReader` target (prefer over raw asset ids).
+    var scrollTargetId: String { "album-section-\(id)" }
 }
 
 @MainActor
@@ -32,10 +35,18 @@ final class AlbumViewModel: ObservableObject {
     private var sectionMasonryCache: [String: [[AssetMediaModel]]] = [:]
     private var sectionMasonryColumnsCount: Int = 0
 
-    init(mediasProvider: MediasProviderProtocol, mediaTypeForCacheHydration: MediaSelectionType? = nil) {
+    init(
+        mediasProvider: MediasProviderProtocol,
+        mediaTypeForCacheHydration: MediaSelectionType? = nil,
+        albumMediasCacheKey: String? = nil
+    ) {
         self.mediasProvider = mediasProvider
         if let mediaType = mediaTypeForCacheHydration,
            let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
+            applyFullLibraryPayload(models: entry.models, sections: entry.sections)
+            isAwaitingInitialLibraryLoad = false
+        } else if let cacheKey = albumMediasCacheKey,
+                  let entry = AlbumMediasLibraryCache.shared.entry(for: cacheKey) {
             applyFullLibraryPayload(models: entry.models, sections: entry.sections)
             isAwaitingInitialLibraryLoad = false
         }
@@ -61,6 +72,7 @@ final class AlbumViewModel: ObservableObject {
                 self?.handleIncomingModels(models)
             }
 
+        guard assetMediaModels.isEmpty else { return }
         mediasProvider.reload()
     }
 
