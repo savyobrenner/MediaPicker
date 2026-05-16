@@ -49,7 +49,18 @@ struct AlbumView: View {
     private var useMasonry: Bool {
         selectionParamsHolder.gridUsesAssetAspectRatio
     }
-    
+
+    /// Central spinner while PhotoKit loads; hidden when the user must fix permission (.authorize / .unavailable), since `reload` never runs.
+    private var shouldShowInitialLoadingIndicator: Bool {
+        guard viewModel.isAwaitingInitialLibraryLoad else { return false }
+        switch permissionsService.photoLibraryAction {
+        case .authorize, .unavailable:
+            return false
+        case .none, .selectMore, .unknown:
+            return true
+        }
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             ZStack(alignment: .topTrailing) {
@@ -59,7 +70,12 @@ struct AlbumView: View {
                             .padding(.horizontal, 16)
                     }
 
-                    if viewModel.sections.isEmpty && !shouldShowLoadingCell {
+                    if shouldShowInitialLoadingIndicator {
+                        ProgressView()
+                            .tint(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 100)
+                    } else if viewModel.sections.isEmpty && !shouldShowLoadingCell {
                         Text(emptyMessage)
                             .font(.title3)
                             .foregroundColor(.secondary)

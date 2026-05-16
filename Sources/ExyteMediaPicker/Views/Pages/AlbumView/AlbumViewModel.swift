@@ -20,6 +20,10 @@ final class AlbumViewModel: ObservableObject {
     @Published var title: String? = nil
     @Published var assetMediaModels: [AssetMediaModel] = []
     @Published var sections: [AlbumDateSection] = []
+
+    /// True until the first payload arrives from PhotoKit (often async off the main thread).
+    /// Avoids flashing “empty library” while `fetch` + `map` are still running.
+    @Published private(set) var isAwaitingInitialLibraryLoad = true
     
     let mediasProvider: MediasProviderProtocol
 
@@ -34,11 +38,13 @@ final class AlbumViewModel: ObservableObject {
         mediaCancellable = mediasProvider.assetMediaModelsPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] models in
+                guard let self else { return }
                 let sortedModels = models.sorted {
                     ($0.asset.creationDate ?? Date.distantPast) > ($1.asset.creationDate ?? Date.distantPast)
                 }
-                self?.assetMediaModels = sortedModels
-                self?.sections = Self.makeSections(from: sortedModels)
+                assetMediaModels = sortedModels
+                sections = Self.makeSections(from: sortedModels)
+                isAwaitingInitialLibraryLoad = false
             }
         
         mediasProvider.reload()
