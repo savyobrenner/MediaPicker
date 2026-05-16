@@ -79,5 +79,26 @@ enum MediaThumbnailPrefetcher {
         guard !models.isEmpty else { return }
         prefetchThumbnailGridPriming(models: models, columnsCount: columnsCount, maxAssets: 72)
     }
+
+    /// Warms thumbnails around a scrub jump target so cells exist before `scrollTo` runs.
+    static func prefetchWindow(
+        models: [AssetMediaModel],
+        around startIndex: Int,
+        columnsCount: Int,
+        radius: Int = 54
+    ) {
+        guard !models.isEmpty, columnsCount > 0, startIndex >= 0 else { return }
+
+        let lower = max(0, startIndex - radius)
+        let upper = min(models.count, startIndex + radius + 1)
+        guard lower < upper else { return }
+
+        let slice = Array(models[lower..<upper])
+        prefetchThumbnailGridPriming(
+            models: slice,
+            columnsCount: columnsCount,
+            maxAssets: slice.count
+        )
+    }
 }
 #endif

@@ -85,6 +85,8 @@ struct AlbumView: View {
                 if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
                     AlbumDateScrubberOverlay(
                         sections: viewModel.sections,
+                        models: viewModel.assetMediaModels,
+                        columnsCount: columnsCount,
                         scrollProxy: proxy
                     )
                 }

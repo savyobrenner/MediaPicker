@@ -8,16 +8,16 @@ import SwiftUI
 struct AlbumDateScrubberOverlay: View {
 
     let sections: [AlbumDateSection]
+    let models: [AssetMediaModel]
+    let columnsCount: Int
     let scrollProxy: ScrollViewProxy
 
     @State private var scrubLabel: String = ""
     @State private var scrubLocationY: CGFloat = 0
     @State private var isScrubbing: Bool = false
-    @State private var lastScrolledSectionId: String?
-    @State private var lastScrollTimestamp: CFAbsoluteTime = 0
-    @State private var pendingScrollAssetId: String?
-
-    private let scrollThrottleSeconds: CFAbsoluteTime = 0.1
+    @State private var pendingTargetSection: AlbumDateSection?
+    @State private var scrollGeneration: UInt = 0
+    @State private var activeScrollTask: Task<Void, Never>?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -27,11 +27,10 @@ struct AlbumDateScrubberOverlay: View {
                     handleScrub(section: section, localY: localY)
                 },
                 onScrubEnd: {
-                    commitScrollIfNeeded(force: true)
+                    commitScrollOnScrubEnd()
                     withAnimation(.easeOut(duration: 0.2)) {
                         isScrubbing = false
                     }
-                    lastScrolledSectionId = nil
                 }
             )
 
@@ -59,24 +58,61 @@ struct AlbumDateScrubberOverlay: View {
     private func handleScrub(section: AlbumDateSection, localY: CGFloat) {
         scrubLocationY = localY
         scrubLabel = section.title
-        pendingScrollAssetId = section.anchorAssetId
+        pendingTargetSection = section
         if !isScrubbing {
             isScrubbing = true
         }
-
-        let isNewSection = section.id != lastScrolledSectionId
-        let now = CFAbsoluteTimeGetCurrent()
-        let throttleElapsed = now - lastScrollTimestamp >= scrollThrottleSeconds
-        guard isNewSection || throttleElapsed else { return }
-
-        lastScrolledSectionId = section.id
-        lastScrollTimestamp = now
-        commitScrollIfNeeded(force: false)
+        // Grid scroll happens only on scrub end — live scrollTo on every bucket caused hangs.
     }
 
-    private func commitScrollIfNeeded(force: Bool) {
-        guard let assetId = pendingScrollAssetId else { return }
-        _ = force
+    private func commitScrollOnScrubEnd() {
+        guard let target = pendingTargetSection else { return }
+        pendingTargetSection = nil
+
+        activeScrollTask?.cancel()
+        scrollGeneration &+= 1
+        let generation = scrollGeneration
+
+        activeScrollTask = Task { @MainActor in
+#if os(iOS)
+            MediaThumbnailPrefetcher.prefetchWindow(
+                models: models,
+                around: target.startIndex,
+                columnsCount: columnsCount
+            )
+            // Let PhotoKit start caching before LazyVStack materializes the jump path.
+            try? await Task.sleep(nanoseconds: 40_000_000)
+#endif
+            guard !Task.isCancelled, generation == scrollGeneration else { return }
+            performScroll(to: target, generation: generation)
+        }
+    }
+
+    @MainActor
+    private func performScroll(to target: AlbumDateSection, generation: UInt) {
+        let targetIndex = target.startIndex
+
+        if targetIndex < 200 {
+            scrollOnce(to: target.anchorAssetId)
+            return
+        }
+
+        let waypointIndex = targetIndex / 2
+        let waypoint = sections.last(where: { $0.startIndex <= waypointIndex && $0.id != target.id })
+
+        if let waypoint {
+            scrollOnce(to: waypoint.anchorAssetId)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                guard !Task.isCancelled, generation == scrollGeneration else { return }
+                scrollOnce(to: target.anchorAssetId)
+            }
+        } else {
+            scrollOnce(to: target.anchorAssetId)
+        }
+    }
+
+    private func scrollOnce(to assetId: String) {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
