@@ -36,6 +36,7 @@ class BaseMediasProvider: MediasProviderProtocol {
         cancellable = photoLibraryChangeLimitedPhotosPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] in
+                AllPhotosLibraryCache.shared.clear()
                 self?.reload()
             }
     }
@@ -93,12 +94,39 @@ class BaseMediasProvider: MediasProviderProtocol {
 
 class MediasProvider {
 
-    static func fetchAllAssetModels(mediaSelectionType: MediaSelectionType) -> [AssetMediaModel] {
+    static func makeFetchOptions(mediaSelectionType: MediaSelectionType) -> PHFetchOptions {
         let options = PHFetchOptions()
         options.sortDescriptors = [
             NSSortDescriptor(key: "modificationDate", ascending: false)
         ]
-        let fetchResult = PHAsset.fetchAssets(with: options)
+        switch mediaSelectionType {
+        case .photo:
+            options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+        case .video:
+            options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.video.rawValue)
+        case .photoAndVideo:
+            break
+        }
+        return options
+    }
+
+    static func fetchAssetsFetchResult(mediaSelectionType: MediaSelectionType) -> PHFetchResult<PHAsset> {
+        PHAsset.fetchAssets(with: makeFetchOptions(mediaSelectionType: mediaSelectionType))
+    }
+
+    /// O(1) snapshot for comparing library shape without rebuilding `[AssetMediaModel]`.
+    static func quickFingerprint(fetchResult: PHFetchResult<PHAsset>) -> String {
+        let count = fetchResult.count
+        guard count > 0 else {
+            return "empty"
+        }
+        let first = fetchResult.object(at: 0).localIdentifier
+        let last = fetchResult.object(at: count - 1).localIdentifier
+        return "\(count)|\(first)|\(last)"
+    }
+
+    static func fetchAllAssetModels(mediaSelectionType: MediaSelectionType) -> [AssetMediaModel] {
+        let fetchResult = fetchAssetsFetchResult(mediaSelectionType: mediaSelectionType)
         return map(fetchResult: fetchResult, mediaSelectionType: mediaSelectionType)
     }
 

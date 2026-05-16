@@ -17,8 +17,10 @@ public enum MediaPickerWarmup {
     public static func prepareLibraryCache(mediaType: MediaSelectionType = .photoAndVideo) {
         PermissionsService.requestPermission {
             DispatchQueue.global(qos: .utility).async {
-                let assets = MediasProvider.fetchAllAssetModels(mediaSelectionType: mediaType)
-                AllPhotosLibraryCache.shared.store(assets, mediaType: mediaType)
+                let fetchResult = MediasProvider.fetchAssetsFetchResult(mediaSelectionType: mediaType)
+                let quickFp = MediasProvider.quickFingerprint(fetchResult: fetchResult)
+                let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
+                AllPhotosLibraryCache.shared.store(models: assets, mediaType: mediaType, quickFingerprint: quickFp)
                 DispatchQueue.main.async {
 #if os(iOS)
                     MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: assets, columnsCount: 3)

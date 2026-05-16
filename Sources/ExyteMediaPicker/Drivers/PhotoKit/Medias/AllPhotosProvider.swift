@@ -20,17 +20,29 @@ final class AllPhotosProvider: BaseMediasProvider {
     private func reloadAfterPermissionGranted() {
         let mediaType = selectionParamsHolder.mediaType
 
-        if let cached = AllPhotosLibraryCache.shared.models(for: mediaType) {
-            publishAssetsIfChanged(cached)
+        if let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
+            publishAssetsIfChanged(entry.models)
 #if os(iOS)
-            MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: cached, columnsCount: 3)
+            MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: entry.models, columnsCount: 3)
 #endif
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
-            let assets = MediasProvider.fetchAllAssetModels(mediaSelectionType: mediaType)
-            AllPhotosLibraryCache.shared.store(assets, mediaType: mediaType)
+            let fetchResult = MediasProvider.fetchAssetsFetchResult(mediaSelectionType: mediaType)
+            let quickFp = MediasProvider.quickFingerprint(fetchResult: fetchResult)
+
+            if let cached = AllPhotosLibraryCache.shared.entry(for: mediaType),
+               cached.quickFingerprint == quickFp {
+                return
+            }
+
+            let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
+            AllPhotosLibraryCache.shared.store(
+                models: assets,
+                mediaType: mediaType,
+                quickFingerprint: quickFp
+            )
             DispatchQueue.main.async {
                 self.publishAssetsIfChanged(assets)
 #if os(iOS)

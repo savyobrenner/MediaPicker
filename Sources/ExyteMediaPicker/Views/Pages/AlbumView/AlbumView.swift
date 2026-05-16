@@ -38,12 +38,6 @@ struct AlbumView: View {
     @State private var columnsCount: Int = 3
     @GestureState private var pinchScale: CGFloat = 1.0
 
-    // Scrubber state
-    @State private var scrubLabel: String = ""
-    @State private var scrubLocationY: CGFloat = 0
-    @State private var isScrubbing: Bool = false
-    @State private var lastScrubbedSectionId: String?
-    
     private let columnOptions: [Int] = [3, 4, 5]
     private let cellSpacing: CGFloat = 2
     
@@ -96,37 +90,10 @@ struct AlbumView: View {
                 }
 
                 if !viewModel.sections.isEmpty {
-                    DateScrubber(
+                    AlbumDateScrubberOverlay(
                         sections: viewModel.sections,
-                        onScrub: { section, localY in
-                            handleScrub(section: section, localY: localY, proxy: proxy)
-                        },
-                        onScrubEnd: {
-                            lastScrubbedSectionId = nil
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                isScrubbing = false
-                            }
-                        }
+                        scrollProxy: proxy
                     )
-                }
-
-                if isScrubbing {
-                    Text(scrubLabel)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(.thinMaterial, in: Capsule())
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
-                        )
-                        .shadow(color: .black.opacity(0.12), radius: 5, x: 0, y: 2)
-                        .padding(.trailing, DateScrubber.width + 8)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .offset(y: max(scrubLocationY - 18, 0))
-                        .transition(.opacity)
-                        .allowsHitTesting(false)
                 }
             }
         }
@@ -214,28 +181,6 @@ struct AlbumView: View {
         )
     }
     
-    // MARK: - Scrubber
-
-    private func handleScrub(section: AlbumDateSection, localY: CGFloat, proxy: ScrollViewProxy) {
-        scrubLocationY = localY
-        if scrubLabel != section.title {
-            scrubLabel = section.title
-        }
-        if !isScrubbing {
-            withAnimation(.easeIn(duration: 0.15)) {
-                isScrubbing = true
-            }
-        }
-        guard section.id != lastScrubbedSectionId else { return }
-        lastScrubbedSectionId = section.id
-        guard let targetId = section.items.first?.id else { return }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            proxy.scrollTo(targetId, anchor: .top)
-        }
-    }
-
     // MARK: - Pinch to zoom
     
     private var magnificationGesture: some Gesture {
