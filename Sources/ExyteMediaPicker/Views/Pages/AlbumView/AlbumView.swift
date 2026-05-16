@@ -42,6 +42,7 @@ struct AlbumView: View {
     @State private var scrubLabel: String = ""
     @State private var scrubLocationY: CGFloat = 0
     @State private var isScrubbing: Bool = false
+    @State private var lastScrubbedSectionId: String?
     
     private let columnOptions: [Int] = [3, 4, 5]
     private let cellSpacing: CGFloat = 2
@@ -101,6 +102,7 @@ struct AlbumView: View {
                             handleScrub(section: section, localY: localY, proxy: proxy)
                         },
                         onScrubEnd: {
+                            lastScrubbedSectionId = nil
                             withAnimation(.easeOut(duration: 0.2)) {
                                 isScrubbing = false
                             }
@@ -144,16 +146,16 @@ struct AlbumView: View {
     
     // MARK: - Masonry layout (Pinterest-style)
     
+    private var masonryColumns: [[AssetMediaModel]] {
+        viewModel.masonryDistribution(forColumnsCount: columnsCount)
+    }
+
     private var masonryContent: some View {
-        // Distribute all assets across N columns in one continuous pass so
-        // the scroll is uninterrupted. The viewmodel keeps `sections` only
-        // for the scrubber: scrolling targets the section's first asset id.
-        let distributed = distributeIntoColumns(viewModel.assetMediaModels, count: columnsCount)
-        return VStack(spacing: 0) {
+        VStack(spacing: 0) {
             HStack(alignment: .top, spacing: cellSpacing) {
-                ForEach(distributed.indices, id: \.self) { index in
+                ForEach(masonryColumns.indices, id: \.self) { index in
                     LazyVStack(spacing: cellSpacing) {
-                        ForEach(distributed[index]) { assetMediaModel in
+                        ForEach(masonryColumns[index]) { assetMediaModel in
                             cellView(assetMediaModel)
                                 .id(assetMediaModel.id)
                                 .onTapGesture {
@@ -174,35 +176,6 @@ struct AlbumView: View {
                     .padding()
             }
         }
-    }
-    
-    /// Greedy shortest-column distribution: each item is appended to the
-    /// column with the smallest running height. Heights are accumulated
-    /// using a unit-width assumption (height = 1 / aspectRatio).
-    private func distributeIntoColumns(_ items: [AssetMediaModel], count: Int) -> [[AssetMediaModel]] {
-        guard count > 0 else { return [items] }
-        var columns: [[AssetMediaModel]] = Array(repeating: [], count: count)
-        var heights: [Double] = Array(repeating: 0, count: count)
-        
-        for item in items {
-            let aspect = aspectRatio(for: item)
-            let h = aspect > 0 ? 1.0 / Double(aspect) : 1.0
-            // Shortest column wins (ties go to the left).
-            var minIndex = 0
-            for i in 1..<count where heights[i] + 0.0001 < heights[minIndex] {
-                minIndex = i
-            }
-            columns[minIndex].append(item)
-            heights[minIndex] += h
-        }
-        return columns
-    }
-    
-    private func aspectRatio(for item: AssetMediaModel) -> CGFloat {
-        let a = item.asset
-        let w = CGFloat(max(a.pixelWidth, 1))
-        let h = CGFloat(max(a.pixelHeight, 1))
-        return w / h
     }
     
     // MARK: - Square grid (uniform)
@@ -244,17 +217,23 @@ struct AlbumView: View {
     // MARK: - Scrubber
 
     private func handleScrub(section: AlbumDateSection, localY: CGFloat, proxy: ScrollViewProxy) {
-        scrubLabel = section.title
         scrubLocationY = localY
+        if scrubLabel != section.title {
+            scrubLabel = section.title
+        }
         if !isScrubbing {
             withAnimation(.easeIn(duration: 0.15)) {
                 isScrubbing = true
             }
         }
+        guard section.id != lastScrubbedSectionId else { return }
+        lastScrubbedSectionId = section.id
         guard let targetId = section.items.first?.id else { return }
-        // Don't animate while dragging — direct jumps feel faster and
-        // avoid SwiftUI's lazy stacks flickering as we sweep through.
-        proxy.scrollTo(targetId, anchor: .top)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(targetId, anchor: .top)
+        }
     }
 
     // MARK: - Pinch to zoom

@@ -4,6 +4,8 @@
 
 import Foundation
 import Combine
+import Photos
+import CoreGraphics
 
 /// Logical section grouping assets by creation date the same way the
 /// iOS 26 Photos app does: "Today", "Yesterday", "September 12",
@@ -24,10 +26,16 @@ final class AlbumViewModel: ObservableObject {
     /// True until the first payload arrives from PhotoKit (often async off the main thread).
     /// Avoids flashing “empty library” while `fetch` + `map` are still running.
     @Published private(set) var isAwaitingInitialLibraryLoad = true
+
+    /// Bumps whenever `assetMediaModels` / `sections` are replaced so masonry layout cache can invalidate.
+    private var layoutGeneration: UInt = 0
     
     let mediasProvider: MediasProviderProtocol
 
     private var mediaCancellable: AnyCancellable?
+
+    private var masonryDistCacheKey: (generation: UInt, columns: Int)?
+    private var masonryDistCached: [[AssetMediaModel]] = []
     
     init(mediasProvider: MediasProviderProtocol) {
         self.mediasProvider = mediasProvider
@@ -44,10 +52,47 @@ final class AlbumViewModel: ObservableObject {
                 }
                 assetMediaModels = sortedModels
                 sections = Self.makeSections(from: sortedModels)
+                layoutGeneration &+= 1
                 isAwaitingInitialLibraryLoad = false
             }
         
         mediasProvider.reload()
+    }
+
+    /// Cached masonry column buckets — recomputing while scrubbing was forcing O(n) work every frame.
+    func masonryDistribution(forColumnsCount columnsCount: Int) -> [[AssetMediaModel]] {
+        guard columnsCount > 0 else { return [assetMediaModels] }
+        let key = (layoutGeneration, columnsCount)
+        if masonryDistCacheKey?.generation == key.0, masonryDistCacheKey?.columns == key.1 {
+            return masonryDistCached
+        }
+        masonryDistCached = Self.distributeIntoColumns(assetMediaModels, count: columnsCount)
+        masonryDistCacheKey = key
+        return masonryDistCached
+    }
+
+    private static func distributeIntoColumns(_ items: [AssetMediaModel], count: Int) -> [[AssetMediaModel]] {
+        var columns: [[AssetMediaModel]] = Array(repeating: [], count: count)
+        var heights: [Double] = Array(repeating: 0, count: count)
+
+        for item in items {
+            let aspect = Self.aspectRatio(for: item)
+            let h = aspect > 0 ? 1.0 / Double(aspect) : 1.0
+            var minIndex = 0
+            for i in 1..<count where heights[i] + 0.0001 < heights[minIndex] {
+                minIndex = i
+            }
+            columns[minIndex].append(item)
+            heights[minIndex] += h
+        }
+        return columns
+    }
+
+    private static func aspectRatio(for item: AssetMediaModel) -> CGFloat {
+        let a = item.asset
+        let w = CGFloat(max(a.pixelWidth, 1))
+        let h = CGFloat(max(a.pixelHeight, 1))
+        return w / h
     }
     
     deinit {

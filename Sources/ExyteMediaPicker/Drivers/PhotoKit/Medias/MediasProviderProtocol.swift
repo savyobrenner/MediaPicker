@@ -68,8 +68,12 @@ class BaseMediasProvider: MediasProviderProtocol {
             }
         }
         else {
-            DispatchQueue.main.async { [weak self] in
-                self?.assetMediaModelsPublisher.send(assets)
+            if Thread.isMainThread {
+                assetMediaModelsPublisher.send(assets)
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.assetMediaModelsPublisher.send(assets)
+                }
             }
         }
     }
@@ -88,6 +92,15 @@ class BaseMediasProvider: MediasProviderProtocol {
 }
 
 class MediasProvider {
+
+    static func fetchAllAssetModels(mediaSelectionType: MediaSelectionType) -> [AssetMediaModel] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [
+            NSSortDescriptor(key: "modificationDate", ascending: false)
+        ]
+        let fetchResult = PHAsset.fetchAssets(with: options)
+        return map(fetchResult: fetchResult, mediaSelectionType: mediaSelectionType)
+    }
 
     static func map(fetchResult: PHFetchResult<PHAsset>, mediaSelectionType: MediaSelectionType) -> [AssetMediaModel] {
         var assetMediaModels: [AssetMediaModel] = []
