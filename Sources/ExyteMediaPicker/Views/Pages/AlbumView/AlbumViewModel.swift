@@ -7,9 +7,6 @@ import Combine
 import Photos
 import CoreGraphics
 
-/// Logical section grouping assets by creation date the same way the
-/// iOS 26 Photos app does: "Today", "Yesterday", "September 12",
-/// "September 2025"...
 struct AlbumDateSection: Identifiable, Equatable {
     let id: String
     let title: String
@@ -23,8 +20,10 @@ final class AlbumViewModel: ObservableObject {
     @Published var assetMediaModels: [AssetMediaModel] = []
     @Published var sections: [AlbumDateSection] = []
 
-    /// True until the first payload arrives from PhotoKit (often async off the main thread).
+    /// False as soon as we can show tiles (cache, placeholders, or first streamed batch).
     @Published private(set) var isAwaitingInitialLibraryLoad = true
+    /// True while PhotoKit is still appending batches (footer indicator only).
+    @Published private(set) var isStreamingLibraryIndex = false
 
     private var layoutGeneration: UInt = 0
 
@@ -32,29 +31,35 @@ final class AlbumViewModel: ObservableObject {
 
     private var mediaCancellable: AnyCancellable?
     private var applyGeneration: UInt = 0
+    private var sectionsRebuildTask: Task<Void, Never>?
 
     private var masonryDistCacheKey: (generation: UInt, columns: Int)?
     private var masonryDistCached: [[AssetMediaModel]] = []
+    private var masonryColumnHeights: [Double] = []
 
-    /// Pass `mediaTypeForCacheHydration` for the “All photos” provider so reopening the picker can paint instantly from cache.
     init(mediasProvider: MediasProviderProtocol, mediaTypeForCacheHydration: MediaSelectionType? = nil) {
         self.mediasProvider = mediasProvider
         if let mediaType = mediaTypeForCacheHydration,
            let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
-            applyLibraryPayload(models: entry.models, sections: entry.sections, bumpLayout: true)
+            applyFullLibraryPayload(models: entry.models, sections: entry.sections)
             isAwaitingInitialLibraryLoad = false
+            isStreamingLibraryIndex = false
         }
         onStart()
     }
 
     func prepareForMediaTypeChange(_ mediaType: MediaSelectionType) {
         if let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
-            applyLibraryPayload(models: entry.models, sections: entry.sections, bumpLayout: true)
+            applyFullLibraryPayload(models: entry.models, sections: entry.sections)
             isAwaitingInitialLibraryLoad = false
+            isStreamingLibraryIndex = false
         } else {
             assetMediaModels = []
             sections = []
+            masonryDistCached = []
+            masonryColumnHeights = []
             isAwaitingInitialLibraryLoad = true
+            isStreamingLibraryIndex = true
         }
     }
 
@@ -69,50 +74,135 @@ final class AlbumViewModel: ObservableObject {
     }
 
     private func handleIncomingModels(_ models: [AssetMediaModel]) {
-        let generation = applyGeneration &+ 1
-        applyGeneration = generation
-
-        // Already sorted by PhotoKit fetch (modificationDate desc); skip O(n log n) re-sort.
-        if let cached = AllPhotosLibraryCache.shared.entry(matchingModels: models),
-           !cached.sections.isEmpty {
-            applyLibraryPayload(models: models, sections: cached.sections, bumpLayout: true)
+        if models.isEmpty {
             isAwaitingInitialLibraryLoad = false
+            isStreamingLibraryIndex = false
+            assetMediaModels = []
+            sections = []
+            masonryDistCached = []
+            masonryColumnHeights = []
             return
         }
+
+        isAwaitingInitialLibraryLoad = false
+
+        if isStreamingAppend(of: models) {
+            appendStreamingBatch(models)
+            scheduleSectionsRebuild(for: models)
+            return
+        }
+
+        applyGeneration &+= 1
+        let generation = applyGeneration
+        let likelyMoreBatches = models.count >= 180 && models.count.isMultiple(of: 180)
+
+        if let cached = AllPhotosLibraryCache.shared.entry(matchingModels: models),
+           !cached.sections.isEmpty {
+            applyFullLibraryPayload(models: models, sections: cached.sections)
+            isStreamingLibraryIndex = false
+            return
+        }
+
+        isStreamingLibraryIndex = likelyMoreBatches
 
         Task.detached(priority: .userInitiated) { [generation] in
             let builtSections = AlbumDateSectionBuilder.makeSections(from: models)
             await MainActor.run { [weak self] in
                 guard let self, generation == self.applyGeneration else { return }
-                self.applyLibraryPayload(models: models, sections: builtSections, bumpLayout: true)
-                self.isAwaitingInitialLibraryLoad = false
+                self.applyFullLibraryPayload(models: models, sections: builtSections)
+                if !likelyMoreBatches {
+                    self.isStreamingLibraryIndex = false
+                }
             }
         }
     }
 
-    private func applyLibraryPayload(
-        models: [AssetMediaModel],
-        sections: [AlbumDateSection],
-        bumpLayout: Bool
-    ) {
+    private func isStreamingAppend(of models: [AssetMediaModel]) -> Bool {
+        guard !assetMediaModels.isEmpty,
+              models.count > assetMediaModels.count else {
+            return false
+        }
+        let prefixCount = assetMediaModels.count
+        return models[prefixCount - 1].id == assetMediaModels[prefixCount - 1].id
+    }
+
+    private func appendStreamingBatch(_ models: [AssetMediaModel]) {
+        isStreamingLibraryIndex = true
+        let previousCount = assetMediaModels.count
         assetMediaModels = models
-        self.sections = sections
-        if bumpLayout {
-            layoutGeneration &+= 1
-            masonryDistCacheKey = nil
+        let newItems = Array(models[previousCount...])
+        guard !newItems.isEmpty else { return }
+        layoutGeneration &+= 1
+        appendToMasonryColumns(newItems, columnsCount: 3)
+    }
+
+    private func scheduleSectionsRebuild(for models: [AssetMediaModel]) {
+        sectionsRebuildTask?.cancel()
+        let generation = applyGeneration
+        sectionsRebuildTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 280_000_000)
+            guard !Task.isCancelled else { return }
+            let built = AlbumDateSectionBuilder.makeSections(from: models)
+            await MainActor.run { [weak self] in
+                guard let self, generation == self.applyGeneration else { return }
+                self.sections = built
+            }
         }
     }
 
-    /// Cached masonry column buckets — recomputing while scrubbing was forcing O(n) work every frame.
+    private func applyFullLibraryPayload(models: [AssetMediaModel], sections: [AlbumDateSection]) {
+        sectionsRebuildTask?.cancel()
+        assetMediaModels = models
+        self.sections = sections
+        layoutGeneration &+= 1
+        rebuildMasonryColumns(count: 3)
+        isStreamingLibraryIndex = false
+    }
+
     func masonryDistribution(forColumnsCount columnsCount: Int) -> [[AssetMediaModel]] {
         guard columnsCount > 0 else { return [assetMediaModels] }
         let key = (layoutGeneration, columnsCount)
-        if masonryDistCacheKey?.generation == key.0, masonryDistCacheKey?.columns == key.1 {
+        if masonryDistCacheKey?.generation == key.0,
+           masonryDistCacheKey?.columns == key.1,
+           masonryDistCached.count == columnsCount {
             return masonryDistCached
         }
-        masonryDistCached = Self.distributeIntoColumns(assetMediaModels, count: columnsCount)
+        rebuildMasonryColumns(count: columnsCount)
         masonryDistCacheKey = key
         return masonryDistCached
+    }
+
+    private func rebuildMasonryColumns(count: Int) {
+        masonryDistCached = Self.distributeIntoColumns(assetMediaModels, count: count)
+        masonryColumnHeights = columnHeights(for: masonryDistCached, count: count)
+    }
+
+    private func appendToMasonryColumns(_ newItems: [AssetMediaModel], columnsCount: Int) {
+        if masonryDistCached.count != columnsCount || masonryColumnHeights.count != columnsCount {
+            rebuildMasonryColumns(count: columnsCount)
+            return
+        }
+        for item in newItems {
+            let aspect = Self.aspectRatio(for: item)
+            let h = aspect > 0 ? 1.0 / Double(aspect) : 1.0
+            var minIndex = 0
+            for i in 1..<columnsCount where masonryColumnHeights[i] + 0.0001 < masonryColumnHeights[minIndex] {
+                minIndex = i
+            }
+            masonryDistCached[minIndex].append(item)
+            masonryColumnHeights[minIndex] += h
+        }
+    }
+
+    private func columnHeights(for columns: [[AssetMediaModel]], count: Int) -> [Double] {
+        var heights = Array(repeating: 0.0, count: count)
+        for columnIndex in 0..<count {
+            for item in columns[columnIndex] {
+                let aspect = Self.aspectRatio(for: item)
+                heights[columnIndex] += aspect > 0 ? 1.0 / Double(aspect) : 1.0
+            }
+        }
+        return heights
     }
 
     private static func distributeIntoColumns(_ items: [AssetMediaModel], count: Int) -> [[AssetMediaModel]] {
@@ -120,7 +210,7 @@ final class AlbumViewModel: ObservableObject {
         var heights: [Double] = Array(repeating: 0, count: count)
 
         for item in items {
-            let aspect = Self.aspectRatio(for: item)
+            let aspect = aspectRatio(for: item)
             let h = aspect > 0 ? 1.0 / Double(aspect) : 1.0
             var minIndex = 0
             for i in 1..<count where heights[i] + 0.0001 < heights[minIndex] {
@@ -142,5 +232,6 @@ final class AlbumViewModel: ObservableObject {
     deinit {
         mediasProvider.cancel()
         mediaCancellable = nil
+        sectionsRebuildTask?.cancel()
     }
 }

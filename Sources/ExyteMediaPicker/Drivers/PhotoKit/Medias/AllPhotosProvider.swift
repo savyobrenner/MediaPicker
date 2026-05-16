@@ -10,6 +10,7 @@ import SwiftUI
 final class AllPhotosProvider: BaseMediasProvider {
 
     private var lastDeliveredFingerprint: String?
+    private static let publishBatchSize = 180
 
     override func reload() {
         PermissionsService.requestPermission { [weak self] in
@@ -21,7 +22,7 @@ final class AllPhotosProvider: BaseMediasProvider {
         let mediaType = selectionParamsHolder.mediaType
 
         if let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
-            publishAssetsIfChanged(entry.models)
+            publishFinalSnapshot(entry.models)
 #if os(iOS)
             MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: entry.models, columnsCount: 3)
 #endif
@@ -37,24 +38,61 @@ final class AllPhotosProvider: BaseMediasProvider {
                 return
             }
 
-            let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
-            let sections = AlbumDateSectionBuilder.makeSections(from: assets)
-            AllPhotosLibraryCache.shared.store(
-                models: assets,
-                sections: sections,
-                mediaType: mediaType,
-                quickFingerprint: quickFp
-            )
-            DispatchQueue.main.async {
-                self.publishAssetsIfChanged(assets)
+            let total = fetchResult.count
+            guard total > 0 else {
+                DispatchQueue.main.async {
+                    self.publishFinalSnapshot([])
+                }
+                return
+            }
+
+            var accumulated: [AssetMediaModel] = []
+            accumulated.reserveCapacity(total)
+
+            for index in 0..<total {
+                let asset = fetchResult.object(at: index)
+                if (asset.mediaType == .image && mediaType.allowsPhoto)
+                    || (asset.mediaType == .video && mediaType.allowsVideo) {
+                    accumulated.append(AssetMediaModel(asset: asset))
+                }
+
+                let isLast = index == total - 1
+                let shouldFlush = accumulated.count.isMultiple(of: Self.publishBatchSize) || isLast
+                guard shouldFlush, !accumulated.isEmpty else { continue }
+
+                let snapshot = accumulated
+                DispatchQueue.main.async {
+                    if isLast {
+                        let sections = AlbumDateSectionBuilder.makeSections(from: snapshot)
+                        AllPhotosLibraryCache.shared.store(
+                            models: snapshot,
+                            sections: sections,
+                            mediaType: mediaType,
+                            quickFingerprint: quickFp
+                        )
+                        self.publishFinalSnapshot(snapshot)
 #if os(iOS)
-                MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: assets, columnsCount: 3)
+                        MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: snapshot, columnsCount: 3)
 #endif
+                    } else {
+                        self.publishStreamingSnapshot(snapshot)
+                    }
+                }
             }
         }
     }
 
-    private func publishAssetsIfChanged(_ assets: [AssetMediaModel]) {
+    private func publishStreamingSnapshot(_ assets: [AssetMediaModel]) {
+        guard filterClosure == nil, massFilterClosure == nil else {
+            publishFinalSnapshot(assets)
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.assetMediaModelsPublisher.send(assets)
+        }
+    }
+
+    private func publishFinalSnapshot(_ assets: [AssetMediaModel]) {
         let fingerprint = Self.fingerprint(for: assets)
         if filterClosure == nil, massFilterClosure == nil, fingerprint == lastDeliveredFingerprint {
             return

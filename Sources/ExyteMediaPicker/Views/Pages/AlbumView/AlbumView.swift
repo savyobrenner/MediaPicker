@@ -45,14 +45,13 @@ struct AlbumView: View {
         selectionParamsHolder.gridUsesAssetAspectRatio
     }
 
-    /// Central spinner while PhotoKit loads; hidden when the user must fix permission (.authorize / .unavailable), since `reload` never runs.
-    private var shouldShowInitialLoadingIndicator: Bool {
-        guard viewModel.isAwaitingInitialLibraryLoad else { return false }
+    private var shouldShowPlaceholderGrid: Bool {
+        guard viewModel.assetMediaModels.isEmpty else { return false }
         switch permissionsService.photoLibraryAction {
         case .authorize, .unavailable:
             return false
-        case .none, .selectMore, .unknown:
-            return true
+        default:
+            return viewModel.isAwaitingInitialLibraryLoad || viewModel.isStreamingLibraryIndex
         }
     }
 
@@ -65,12 +64,9 @@ struct AlbumView: View {
                             .padding(.horizontal, 16)
                     }
 
-                    if shouldShowInitialLoadingIndicator {
-                        ProgressView()
-                            .tint(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 100)
-                    } else if viewModel.sections.isEmpty && !shouldShowLoadingCell {
+                    if shouldShowPlaceholderGrid {
+                        placeholderGridContent
+                    } else if viewModel.sections.isEmpty && !shouldShowLoadingCell && viewModel.assetMediaModels.isEmpty {
                         Text(emptyMessage)
                             .font(.title3)
                             .foregroundColor(.secondary)
@@ -89,7 +85,7 @@ struct AlbumView: View {
                     }
                 }
 
-                if !viewModel.sections.isEmpty {
+                if !viewModel.sections.isEmpty || !viewModel.assetMediaModels.isEmpty {
                     AlbumDateScrubberOverlay(
                         sections: viewModel.sections,
                         scrollProxy: proxy
@@ -137,12 +133,31 @@ struct AlbumView: View {
             }
             .padding(.horizontal, cellSpacing)
 
-            if shouldShowLoadingCell {
+            if shouldShowLoadingCell || viewModel.isStreamingLibraryIndex {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding()
             }
         }
+    }
+
+    private var placeholderGridContent: some View {
+        let placeholders = Array(repeating: 0, count: 18)
+        return LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount),
+            spacing: cellSpacing
+        ) {
+            ForEach(placeholders.indices, id: \.self) { index in
+                MediaGridPlaceholderCell(aspectRatio: useMasonry ? placeholderAspect(for: index) : 1)
+            }
+        }
+        .padding(.horizontal, cellSpacing)
+        .redacted(reason: .placeholder)
+    }
+
+    private func placeholderAspect(for index: Int) -> CGFloat {
+        let presets: [CGFloat] = [0.75, 1.2, 0.85, 1.0, 1.35, 0.7]
+        return presets[index % presets.count]
     }
     
     // MARK: - Square grid (uniform)
@@ -163,7 +178,7 @@ struct AlbumView: View {
                         openFullscreen(assetMediaModel: assetMediaModel)
                     }
             }
-            if shouldShowLoadingCell {
+            if shouldShowLoadingCell || viewModel.isStreamingLibraryIndex {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .frame(height: 80)
