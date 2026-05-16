@@ -84,6 +84,7 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                     pickerMode?.wrappedValue = mode
                 }
                 viewModel.onStart()
+                MediaPickerWarmup.prepareLibraryCache(mediaType: selectionParamsHolder.mediaType)
             }
             .onChange(of: viewModel.albums) {
                 self.albums = $0.map { $0.toAlbum() }

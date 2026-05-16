@@ -19,19 +19,15 @@ public struct AlbumSelectionView: View {
     let massFilterClosure: MediaPicker.MassFilterClosure?
     var shouldDismiss: ()->()
 
-    @State private var showingLoadingCell = false
-
     public var body: some View {
         switch viewModel.internalPickerMode {
         case .photos:
-            AlbumView(
-                viewModel: AlbumViewModel(
-                    mediasProvider: AllPhotosProvider(selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure, showingLoadingCell: $showingLoadingCell)
-                ),
+            AllPhotosAlbumRoute(
+                selectionParamsHolder: selectionParamsHolder,
+                filterClosure: filterClosure,
+                massFilterClosure: massFilterClosure,
                 isInFullscreen: $isInFullscreen,
                 currentFullscreenMedia: $currentFullscreenMedia,
-                shouldShowLoadingCell: showingLoadingCell,
-                selectionParamsHolder: selectionParamsHolder,
                 shouldDismiss: shouldDismiss
             )
         case .albums:
@@ -49,11 +45,12 @@ public struct AlbumSelectionView: View {
             if let albumModel = viewModel.getAlbumModel(album) {
                 AlbumView(
                     viewModel: AlbumViewModel(
-                        mediasProvider: AlbumMediasProvider(album: albumModel, selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure, showingLoadingCell: $showingLoadingCell)
+                        mediasProvider: AlbumMediasProvider(album: albumModel, selectionParamsHolder: selectionParamsHolder, filterClosure: filterClosure, massFilterClosure: massFilterClosure, showingLoadingCell: .constant(false)),
+                        mediaTypeForCacheHydration: nil
                     ),
                     isInFullscreen: $isInFullscreen,
                     currentFullscreenMedia: $currentFullscreenMedia,
-                    shouldShowLoadingCell: showingLoadingCell,
+                    shouldShowLoadingCell: false,
                     selectionParamsHolder: selectionParamsHolder,
                     shouldDismiss: shouldDismiss
                 )

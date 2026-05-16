@@ -24,39 +24,83 @@ final class AlbumViewModel: ObservableObject {
     @Published var sections: [AlbumDateSection] = []
 
     /// True until the first payload arrives from PhotoKit (often async off the main thread).
-    /// Avoids flashing “empty library” while `fetch` + `map` are still running.
     @Published private(set) var isAwaitingInitialLibraryLoad = true
 
-    /// Bumps whenever `assetMediaModels` / `sections` are replaced so masonry layout cache can invalidate.
     private var layoutGeneration: UInt = 0
-    
+
     let mediasProvider: MediasProviderProtocol
 
     private var mediaCancellable: AnyCancellable?
+    private var applyGeneration: UInt = 0
 
     private var masonryDistCacheKey: (generation: UInt, columns: Int)?
     private var masonryDistCached: [[AssetMediaModel]] = []
-    
-    init(mediasProvider: MediasProviderProtocol) {
+
+    /// Pass `mediaTypeForCacheHydration` for the “All photos” provider so reopening the picker can paint instantly from cache.
+    init(mediasProvider: MediasProviderProtocol, mediaTypeForCacheHydration: MediaSelectionType? = nil) {
         self.mediasProvider = mediasProvider
+        if let mediaType = mediaTypeForCacheHydration,
+           let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
+            applyLibraryPayload(models: entry.models, sections: entry.sections, bumpLayout: true)
+            isAwaitingInitialLibraryLoad = false
+        }
         onStart()
     }
-    
+
+    func prepareForMediaTypeChange(_ mediaType: MediaSelectionType) {
+        if let entry = AllPhotosLibraryCache.shared.entry(for: mediaType) {
+            applyLibraryPayload(models: entry.models, sections: entry.sections, bumpLayout: true)
+            isAwaitingInitialLibraryLoad = false
+        } else {
+            assetMediaModels = []
+            sections = []
+            isAwaitingInitialLibraryLoad = true
+        }
+    }
+
     func onStart() {
         mediaCancellable = mediasProvider.assetMediaModelsPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] models in
-                guard let self else { return }
-                let sortedModels = models.sorted {
-                    ($0.asset.creationDate ?? Date.distantPast) > ($1.asset.creationDate ?? Date.distantPast)
-                }
-                assetMediaModels = sortedModels
-                sections = Self.makeSections(from: sortedModels)
-                layoutGeneration &+= 1
-                isAwaitingInitialLibraryLoad = false
+                self?.handleIncomingModels(models)
             }
-        
+
         mediasProvider.reload()
+    }
+
+    private func handleIncomingModels(_ models: [AssetMediaModel]) {
+        let generation = applyGeneration &+ 1
+        applyGeneration = generation
+
+        // Already sorted by PhotoKit fetch (modificationDate desc); skip O(n log n) re-sort.
+        if let cached = AllPhotosLibraryCache.shared.entry(matchingModels: models),
+           !cached.sections.isEmpty {
+            applyLibraryPayload(models: models, sections: cached.sections, bumpLayout: true)
+            isAwaitingInitialLibraryLoad = false
+            return
+        }
+
+        Task.detached(priority: .userInitiated) { [generation] in
+            let builtSections = AlbumDateSectionBuilder.makeSections(from: models)
+            await MainActor.run { [weak self] in
+                guard let self, generation == self.applyGeneration else { return }
+                self.applyLibraryPayload(models: models, sections: builtSections, bumpLayout: true)
+                self.isAwaitingInitialLibraryLoad = false
+            }
+        }
+    }
+
+    private func applyLibraryPayload(
+        models: [AssetMediaModel],
+        sections: [AlbumDateSection],
+        bumpLayout: Bool
+    ) {
+        assetMediaModels = models
+        self.sections = sections
+        if bumpLayout {
+            layoutGeneration &+= 1
+            masonryDistCacheKey = nil
+        }
     }
 
     /// Cached masonry column buckets — recomputing while scrubbing was forcing O(n) work every frame.
@@ -94,58 +138,9 @@ final class AlbumViewModel: ObservableObject {
         let h = CGFloat(max(a.pixelHeight, 1))
         return w / h
     }
-    
+
     deinit {
         mediasProvider.cancel()
         mediaCancellable = nil
-    }
-    
-    /// Groups assets by day, then assembles localized section headers:
-    /// "Today" / "Hoje", "Yesterday" / "Ontem", "12 de setembro",
-    /// "Setembro 2025".
-    private static func makeSections(from assets: [AssetMediaModel]) -> [AlbumDateSection] {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
-        let dayMonthFormatter = DateFormatter()
-        dayMonthFormatter.locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
-        dayMonthFormatter.setLocalizedDateFormatFromTemplate(isPortuguese ? "d 'de' MMMM" : "MMMM d")
-        
-        let monthYearFormatter = DateFormatter()
-        monthYearFormatter.locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
-        monthYearFormatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
-        
-        var bucket: [(key: String, title: String, items: [AssetMediaModel])] = []
-        var lastKey: String?
-        
-        for asset in assets {
-            let date = asset.asset.creationDate ?? Date.distantPast
-            let key: String
-            let title: String
-            
-            if calendar.isDateInToday(date) {
-                key = "today"
-                title = isPortuguese ? "Hoje" : "Today"
-            } else if calendar.isDateInYesterday(date) {
-                key = "yesterday"
-                title = isPortuguese ? "Ontem" : "Yesterday"
-            } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
-                key = "day-\(calendar.component(.year, from: date))-\(calendar.component(.month, from: date))-\(calendar.component(.day, from: date))"
-                title = dayMonthFormatter.string(from: date).capitalized(with: isPortuguese ? Locale(identifier: "pt_BR") : Locale(identifier: "en_US"))
-            } else {
-                key = "month-\(calendar.component(.year, from: date))-\(calendar.component(.month, from: date))"
-                title = monthYearFormatter.string(from: date).capitalized(with: isPortuguese ? Locale(identifier: "pt_BR") : Locale(identifier: "en_US"))
-            }
-            
-            if lastKey == key {
-                bucket[bucket.count - 1].items.append(asset)
-            } else {
-                bucket.append((key: key, title: title, items: [asset]))
-                lastKey = key
-            }
-        }
-        
-        return bucket.map { AlbumDateSection(id: $0.key, title: $0.title, items: $0.items) }
     }
 }

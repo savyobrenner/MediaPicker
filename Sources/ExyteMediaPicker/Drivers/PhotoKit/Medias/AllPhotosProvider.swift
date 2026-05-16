@@ -38,8 +38,10 @@ final class AllPhotosProvider: BaseMediasProvider {
             }
 
             let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
+            let sections = AlbumDateSectionBuilder.makeSections(from: assets)
             AllPhotosLibraryCache.shared.store(
                 models: assets,
+                sections: sections,
                 mediaType: mediaType,
                 quickFingerprint: quickFp
             )

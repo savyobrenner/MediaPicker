@@ -20,7 +20,13 @@ public enum MediaPickerWarmup {
                 let fetchResult = MediasProvider.fetchAssetsFetchResult(mediaSelectionType: mediaType)
                 let quickFp = MediasProvider.quickFingerprint(fetchResult: fetchResult)
                 let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
-                AllPhotosLibraryCache.shared.store(models: assets, mediaType: mediaType, quickFingerprint: quickFp)
+                let sections = AlbumDateSectionBuilder.makeSections(from: assets)
+                AllPhotosLibraryCache.shared.store(
+                    models: assets,
+                    sections: sections,
+                    mediaType: mediaType,
+                    quickFingerprint: quickFp
+                )
                 DispatchQueue.main.async {
 #if os(iOS)
                     MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: assets, columnsCount: 3)
