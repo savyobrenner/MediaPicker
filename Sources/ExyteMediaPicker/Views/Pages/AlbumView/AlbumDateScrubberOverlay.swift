@@ -2,8 +2,8 @@
 //  AlbumDateScrubberOverlay.swift
 //  ExyteMediaPicker
 //
-//  Scrubber UI is isolated from the grid. The timeline scrolls once when the finger lifts —
-//  live `scrollTo` while dragging freezes SwiftUI lazy masonry on large libraries.
+//  While dragging: floating date label tracks the finger. The grid scrolls once
+//  when the finger lifts (avoids hammering `scrollTo` on huge libraries).
 //
 
 import SwiftUI
@@ -26,10 +26,7 @@ struct AlbumDateScrubberOverlay: View {
                     handleScrub(section: section, localY: localY)
                 },
                 onScrubEnd: {
-                    if let id = pendingScrollAssetId {
-                        fireScroll(to: id)
-                    }
-                    pendingScrollAssetId = nil
+                    commitPendingScroll()
                     withAnimation(.easeOut(duration: 0.2)) {
                         isScrubbing = false
                     }
@@ -59,16 +56,16 @@ struct AlbumDateScrubberOverlay: View {
 
     private func handleScrub(section: AlbumDateSection, localY: CGFloat) {
         scrubLocationY = localY
-        if scrubLabel != section.title {
-            scrubLabel = section.title
-        }
+        scrubLabel = section.title
+        pendingScrollAssetId = section.anchorAssetId
         if !isScrubbing {
             isScrubbing = true
         }
-        pendingScrollAssetId = section.anchorAssetId
     }
 
-    private func fireScroll(to assetId: String) {
+    private func commitPendingScroll() {
+        guard let assetId = pendingScrollAssetId else { return }
+        pendingScrollAssetId = nil
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {

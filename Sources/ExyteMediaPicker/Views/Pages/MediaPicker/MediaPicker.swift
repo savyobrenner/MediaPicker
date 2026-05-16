@@ -66,7 +66,6 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
         self.albumSelectionBuilder = albumSelectionBuilder
         self.mediaTitle = mediaTitle
 
-        MediaPickerWarmup.activateOnAppLaunch()
     }
 
     public var body: some View {
@@ -76,6 +75,8 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
             .environmentObject(permissionService)
             .environmentObject(selectionParamsHolder)
             .onAppear {
+                MediaPickerWarmup.activateOnAppLaunch()
+                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: selectionParamsHolder.mediaType)
                 permissionService.askLibraryPermissionIfNeeded()
 
                 selectionService.onChange = onChange
@@ -86,7 +87,6 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                     pickerMode?.wrappedValue = mode
                 }
                 viewModel.onStart()
-                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: selectionParamsHolder.mediaType)
             }
             .onChange(of: viewModel.albums) {
                 self.albums = $0.map { $0.toAlbum() }
@@ -233,6 +233,12 @@ public extension MediaPicker {
     /// squares. Set to `false` for a classic uniform square grid.
     func mediaGridUsesAssetAspectRatio(_ enabled: Bool = true) -> MediaPicker {
         selectionParamsHolder.gridUsesAssetAspectRatio = enabled
+        return self
+    }
+
+    /// Shows horizontal shortcuts (Recents, Favorites, Albums, …) above the grid.
+    func showsAlbumQuickAccessBar(_ show: Bool = true) -> MediaPicker {
+        selectionParamsHolder.showsAlbumQuickAccessBar = show
         return self
     }
 

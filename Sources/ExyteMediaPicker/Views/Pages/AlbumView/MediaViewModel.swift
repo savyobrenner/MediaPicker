@@ -34,9 +34,6 @@ final class MediaViewModel: ObservableObject {
             PHCachingImageManager.default().cancelImageRequest(requestID)
             self.requestID = nil
         }
-#if os(iOS)
-        preview = nil
-#endif
     }
 
     deinit {

@@ -2,27 +2,21 @@
 //  DateScrubber.swift
 //  ExyteMediaPicker
 //
-//  Minimal right-edge scrubber inspired by iOS Photos. Visually it's just
-//  a thin vertical hairline; while the user drags it the line thickens
-//  slightly and a floating date pill ("hover") appears next to the
-//  finger, telling the caller which section is under the touch via the
-//  `onScrub` callback.
+//  Right-edge scrubber. Finger position is mapped with a power curve so recent
+//  photos occupy more of the rail — small movements stay near “today”.
 //
 
 import SwiftUI
 
 struct DateScrubber: View {
 
-    /// Touch target width. Visually the rail is much thinner — the rest
-    /// of this width is invisible padding so the drag is easy to start.
     static let width: CGFloat = 22
 
+    /// Exponent > 1 compresses the bottom of the rail (older dates need more drag).
+    private static let progressBiasExponent: CGFloat = 2.35
+
     let sections: [AlbumDateSection]
-    /// Called continuously while the user drags. Receives the section the
-    /// finger is currently over plus the y-coordinate (in the rail's
-    /// local space) so the caller can position the floating date pill.
     var onScrub: (AlbumDateSection, CGFloat) -> Void
-    /// Called when the drag ends so the caller can hide the floating pill.
     var onScrubEnd: () -> Void
 
     @State private var isDragging = false
@@ -45,18 +39,27 @@ struct DateScrubber: View {
     }
 
     private func scrubGesture(railHeight: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 6)
             .onChanged { value in
-                guard !sections.isEmpty else { return }
+                guard !sections.isEmpty, railHeight > 0 else { return }
                 isDragging = true
+
                 let clampedY = max(0, min(value.location.y, railHeight))
-                let progress = railHeight > 0 ? clampedY / railHeight : 0
-                let index = min(Int(progress * CGFloat(sections.count)), sections.count - 1)
+                let linearProgress = clampedY / railHeight
+                let biasedProgress = pow(linearProgress, Self.progressBiasExponent)
+                let index = sectionIndex(for: biasedProgress, count: sections.count)
+
                 onScrub(sections[index], clampedY)
             }
             .onEnded { _ in
                 isDragging = false
                 onScrubEnd()
             }
+    }
+
+    private func sectionIndex(for progress: CGFloat, count: Int) -> Int {
+        guard count > 1 else { return 0 }
+        let scaled = progress * CGFloat(count - 1)
+        return min(max(Int(scaled.rounded(.down)), 0), count - 1)
     }
 }

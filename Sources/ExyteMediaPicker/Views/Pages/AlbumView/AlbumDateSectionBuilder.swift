@@ -7,26 +7,38 @@ import Foundation
 
 enum AlbumDateSectionBuilder {
 
-  /// Groups assets by day (expects newest-first order, same as PhotoKit fetch).
-  /// Sections only store a scroll anchor id — not every asset in the bucket (saves a full duplicate of the library in RAM).
+  /// Groups assets for the grid + date scrubber (newest-first, same as PhotoKit).
+  ///
+  /// Buckets are intentionally **coarse** so the right-edge scrubber does not jump years
+  /// on a tiny drag (day-level sections made the rail hypersensitive on large libraries).
+  ///
+  /// - Today / Yesterday: own section
+  /// - Current & previous calendar year: **month**
+  /// - Older: **year**
   static func makeSections(from assets: [AssetMediaModel]) -> [AlbumDateSection] {
     let calendar = Calendar.current
     let now = Date()
+    let currentYear = calendar.component(.year, from: now)
 
     let isPortuguese = Locale.preferredLanguages.first?.hasPrefix("pt") ?? false
-    let dayMonthFormatter = DateFormatter()
-    dayMonthFormatter.locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
-    dayMonthFormatter.setLocalizedDateFormatFromTemplate(isPortuguese ? "d 'de' MMMM" : "MMMM d")
+    let locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
+
+    let monthOnlyFormatter = DateFormatter()
+    monthOnlyFormatter.locale = locale
+    monthOnlyFormatter.setLocalizedDateFormatFromTemplate("MMMM")
 
     let monthYearFormatter = DateFormatter()
-    monthYearFormatter.locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
+    monthYearFormatter.locale = locale
     monthYearFormatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
 
     var sections: [AlbumDateSection] = []
     var lastKey: String?
 
-    for asset in assets {
+    for (index, asset) in assets.enumerated() {
       let date = asset.asset.creationDate ?? Date.distantPast
+      let assetYear = calendar.component(.year, from: date)
+      let assetMonth = calendar.component(.month, from: date)
+
       let key: String
       let title: String
 
@@ -36,16 +48,22 @@ enum AlbumDateSectionBuilder {
       } else if calendar.isDateInYesterday(date) {
         key = "yesterday"
         title = isPortuguese ? "Ontem" : "Yesterday"
-      } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
-        key = "day-\(calendar.component(.year, from: date))-\(calendar.component(.month, from: date))-\(calendar.component(.day, from: date))"
-        title = dayMonthFormatter.string(from: date).capitalized(with: isPortuguese ? Locale(identifier: "pt_BR") : Locale(identifier: "en_US"))
+      } else if assetYear >= currentYear - 1 {
+        key = "month-\(assetYear)-\(assetMonth)"
+        if assetYear == currentYear {
+          title = monthOnlyFormatter.string(from: date).capitalized(with: locale)
+        } else {
+          title = monthYearFormatter.string(from: date).capitalized(with: locale)
+        }
       } else {
-        key = "month-\(calendar.component(.year, from: date))-\(calendar.component(.month, from: date))"
-        title = monthYearFormatter.string(from: date).capitalized(with: isPortuguese ? Locale(identifier: "pt_BR") : Locale(identifier: "en_US"))
+        key = "year-\(assetYear)"
+        title = "\(assetYear)"
       }
 
       if lastKey != key {
-        sections.append(AlbumDateSection(id: key, title: title, anchorAssetId: asset.id))
+        sections.append(
+          AlbumDateSection(id: key, title: title, anchorAssetId: asset.id, startIndex: index)
+        )
         lastKey = key
       }
     }

@@ -17,13 +17,23 @@ final public class SelectionParamsHolder: ObservableObject {
     /// dimensions) so thumbnails are not forced to squares. When false,
     /// cells are square like the classic Photos library grid.
     @Published public var gridUsesAssetAspectRatio: Bool = true
+    /// Horizontal chips (Recents, Favorites, Albums, …) above the grid.
+    @Published public var showsAlbumQuickAccessBar: Bool = true
 
-    public init(mediaType: MediaSelectionType = .photoAndVideo, selectionStyle: MediaSelectionStyle = .checkmark, selectionLimit: Int? = nil, showFullscreenPreview: Bool = true, gridUsesAssetAspectRatio: Bool = true) {
+    public init(
+        mediaType: MediaSelectionType = .photoAndVideo,
+        selectionStyle: MediaSelectionStyle = .checkmark,
+        selectionLimit: Int? = nil,
+        showFullscreenPreview: Bool = true,
+        gridUsesAssetAspectRatio: Bool = true,
+        showsAlbumQuickAccessBar: Bool = true
+    ) {
         self.mediaType = mediaType
         self.selectionStyle = selectionStyle
         self.selectionLimit = selectionLimit
         self.showFullscreenPreview = showFullscreenPreview
         self.gridUsesAssetAspectRatio = gridUsesAssetAspectRatio
+        self.showsAlbumQuickAccessBar = showsAlbumQuickAccessBar
     }
 }
 

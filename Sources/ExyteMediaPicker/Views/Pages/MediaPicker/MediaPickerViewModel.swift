@@ -33,4 +33,56 @@ final class MediaPickerViewModel: ObservableObject {
         internalPickerMode = mode
         shouldUpdatePickerMode(mode)
     }
+
+    func albumModel(kind: SmartAlbumKind) -> AlbumModel? {
+        albums.first { $0.kind == kind }
+    }
+
+    func quickAccessItems(for mediaType: MediaSelectionType) -> [AlbumQuickAccessItem] {
+        var items: [AlbumQuickAccessItem] = [.recents]
+
+        for kind in Self.preferredShortcutKinds(for: mediaType) {
+            guard kind.isAvailable(for: mediaType), albumModel(kind: kind) != nil else { continue }
+            items.append(.smartAlbum(kind))
+        }
+
+        items.append(.browseAlbums)
+        return items
+    }
+
+    func isQuickAccessSelected(_ item: AlbumQuickAccessItem, mode: MediaPickerMode) -> Bool {
+        switch (item, mode) {
+        case (.recents, .photos):
+            return true
+        case (.browseAlbums, .albums):
+            return true
+        case (.smartAlbum(let kind), .album(let album)):
+            return album.kind == kind
+        default:
+            return false
+        }
+    }
+
+    func applyQuickAccess(_ item: AlbumQuickAccessItem) {
+        switch item {
+        case .recents:
+            setPickerMode(.photos)
+        case .browseAlbums:
+            setPickerMode(.albums)
+        case .smartAlbum(let kind):
+            guard let model = albumModel(kind: kind) else { return }
+            setPickerMode(.album(model.toAlbum()))
+        }
+    }
+
+    private static func preferredShortcutKinds(for mediaType: MediaSelectionType) -> [SmartAlbumKind] {
+        switch mediaType {
+        case .photo:
+            return [.favorites, .screenshots, .livePhotos, .selfies]
+        case .video:
+            return [.favorites, .videos]
+        case .photoAndVideo:
+            return [.favorites, .videos, .screenshots, .livePhotos]
+        }
+    }
 }

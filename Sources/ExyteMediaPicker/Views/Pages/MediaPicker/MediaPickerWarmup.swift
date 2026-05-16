@@ -2,11 +2,10 @@
 //  MediaPickerWarmup.swift
 //  ExyteMediaPicker
 //
-//  Populates `AllPhotosLibraryCache` before the picker grid opens.
+//  Builds the in-memory PhotoKit **index** (asset list + date sections) before the picker opens.
+//  Does not decode thumbnails — that keeps memory low at launch.
 //
-//  **App launch:** call `MediaPickerWarmup.activateOnAppLaunch()` from your `@main` App
-//  `init` or root scene `.onAppear` (after photo permission). The library also registers
-//  for `UIApplication.didFinishLaunching` when this module is linked.
+//  Call `activateOnAppLaunch()` from the host app `@main` init (recommended) after library permission.
 //
 
 import Foundation
@@ -25,7 +24,7 @@ public enum MediaPickerWarmup {
 
     static let libraryCacheReadyPublisher = PassthroughSubject<MediaSelectionType, Never>()
 
-    /// Call from the host app at startup (recommended). Safe to call multiple times.
+    /// Call from the host app at startup. Safe to call multiple times.
     public static func activateOnAppLaunch() {
 #if canImport(UIKit)
         MediaPickerLaunchRegistration.ensureRegistered()
@@ -33,7 +32,8 @@ public enum MediaPickerWarmup {
         scheduleWarmupOnAppLaunch()
     }
 
-    public static func prepareLibraryCacheIfNeeded(mediaType: MediaSelectionType = .photoAndVideo) {
+    /// Builds index cache only if missing. Does not prefetch image bytes.
+    public static func prepareLibraryCacheIfNeeded(mediaType: MediaSelectionType) {
         lock.lock()
         if AllPhotosLibraryCache.shared.entry(for: mediaType) != nil {
             lock.unlock()
@@ -49,19 +49,15 @@ public enum MediaPickerWarmup {
         runWarmup(mediaType: mediaType)
     }
 
-    public static func prepareLibraryCache(mediaType: MediaSelectionType = .photoAndVideo) {
+    /// Forces index rebuild even if a cache entry exists (rare; prefer `prepareLibraryCacheIfNeeded`).
+    public static func prepareLibraryCache(mediaType: MediaSelectionType) {
+        AllPhotosLibraryCache.shared.removeEntry(for: mediaType)
         lock.lock()
-        if inFlight.contains(mediaType) {
-            lock.unlock()
-            return
-        }
-        inFlight.insert(mediaType)
+        inFlight.remove(mediaType)
         lock.unlock()
-
-        runWarmup(mediaType: mediaType)
+        prepareLibraryCacheIfNeeded(mediaType: mediaType)
     }
 
-    /// @deprecated Use `activateOnAppLaunch()` — kept for older call sites.
     public static func installAutomaticWarmupWhenLibraryAuthorized() {
         activateOnAppLaunch()
     }
@@ -92,6 +88,18 @@ public enum MediaPickerWarmup {
             DispatchQueue.global(qos: .utility).async {
                 let fetchResult = MediasProvider.fetchAssetsFetchResult(mediaSelectionType: mediaType)
                 let quickFp = MediasProvider.quickFingerprint(fetchResult: fetchResult)
+
+                if let existing = AllPhotosLibraryCache.shared.entry(for: mediaType),
+                   existing.quickFingerprint == quickFp {
+                    DispatchQueue.main.async {
+                        lock.lock()
+                        inFlight.remove(mediaType)
+                        lock.unlock()
+                        libraryCacheReadyPublisher.send(mediaType)
+                    }
+                    return
+                }
+
                 let assets = MediasProvider.map(fetchResult: fetchResult, mediaSelectionType: mediaType)
                 let sections = AlbumDateSectionBuilder.makeSections(from: assets)
 
@@ -103,9 +111,6 @@ public enum MediaPickerWarmup {
                 )
 
                 DispatchQueue.main.async {
-#if os(iOS)
-                    MediaThumbnailPrefetcher.prefetchThumbnailGridPriming(models: assets, columnsCount: 3)
-#endif
                     lock.lock()
                     inFlight.remove(mediaType)
                     lock.unlock()

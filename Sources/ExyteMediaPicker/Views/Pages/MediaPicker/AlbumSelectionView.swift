@@ -20,6 +20,18 @@ public struct AlbumSelectionView: View {
     var shouldDismiss: ()->()
 
     public var body: some View {
+        VStack(spacing: 0) {
+            if selectionParamsHolder.showsAlbumQuickAccessBar, !isInFullscreen {
+                AlbumQuickAccessBar(viewModel: viewModel)
+                Divider()
+                    .opacity(0.35)
+            }
+            pickerContent
+        }
+    }
+
+    @ViewBuilder
+    private var pickerContent: some View {
         switch viewModel.internalPickerMode {
         case .photos:
             AllPhotosAlbumRoute(

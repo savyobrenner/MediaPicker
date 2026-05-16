@@ -1,19 +1,8 @@
 //
 //  Created by Alex.M on 27.05.2022.
 //
-//  Two grid layouts:
-//
-//  - Masonry (Pinterest-style): when
-//    `selectionParamsHolder.gridUsesAssetAspectRatio == true`. Items are
-//    distributed across N columns by a greedy shortest-column heuristic
-//    so each cell renders at its real aspect ratio without letterbox.
-//
-//  - Square grid: classic uniform layout used when the flag is false.
-//
-//  Both support pinch-to-zoom between 3 / 4 / 5 columns. Sections still
-//  exist in the viewmodel for the right-edge date scrubber, but they no
-//  longer render headers — the scroll is fully continuous and the date
-//  surfaces only when the user drags the scrubber.
+//  Grid is split by **date section** so `LazyVStack` / `LazyVGrid` only materialize
+//  one bucket at a time. The right-edge scrubber scrolls to each section anchor.
 //
 
 import SwiftUI
@@ -45,13 +34,18 @@ struct AlbumView: View {
         selectionParamsHolder.gridUsesAssetAspectRatio
     }
 
-    private var shouldShowPlaceholderGrid: Bool {
+    private var gridColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount)
+    }
+
+    private var shouldShowInitialLoadingIndicator: Bool {
         guard viewModel.assetMediaModels.isEmpty else { return false }
+        guard viewModel.isAwaitingInitialLibraryLoad else { return false }
         switch permissionsService.photoLibraryAction {
         case .authorize, .unavailable:
             return false
         default:
-            return viewModel.isAwaitingInitialLibraryLoad
+            return true
         }
     }
 
@@ -64,21 +58,26 @@ struct AlbumView: View {
                             .padding(.horizontal, 16)
                     }
 
-                    if shouldShowPlaceholderGrid {
-                        placeholderGridContent
+                    if shouldShowInitialLoadingIndicator {
+                        ProgressView()
+                            .tint(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 100)
                     } else if viewModel.sections.isEmpty && !shouldShowLoadingCell && viewModel.assetMediaModels.isEmpty {
                         Text(emptyMessage)
                             .font(.title3)
                             .foregroundColor(.secondary)
                             .padding(.top, 80)
+                    } else if viewModel.sections.isEmpty {
+                        legacyFlatGridContent
                     } else if useMasonry {
-                        masonryContent
+                        sectionedMasonryContent
                     } else {
-                        squareGridContent
+                        sectionedSquareGridContent
                     }
                 }
                 .background(theme.main.albumSelectionBackground.ignoresSafeArea())
-                .gesture(magnificationGesture)
+                .simultaneousGesture(magnificationGesture)
                 .onTapGesture {
                     if keyboardHeightHelper.keyboardDisplayed {
                         dismissKeyboard()
@@ -107,61 +106,75 @@ struct AlbumView: View {
         }
     }
     
-    // MARK: - Masonry layout (Pinterest-style)
-    
-    private var masonryColumns: [[AssetMediaModel]] {
-        viewModel.masonryDistribution(forColumnsCount: columnsCount)
-    }
+    // MARK: - Sectioned layouts (preferred)
 
-    private var masonryContent: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: cellSpacing) {
-                ForEach(masonryColumns.indices, id: \.self) { index in
-                    LazyVStack(spacing: cellSpacing) {
-                        ForEach(masonryColumns[index]) { assetMediaModel in
-                            cellView(assetMediaModel)
-                                .id(assetMediaModel.id)
-                                .onTapGesture {
-                                    onTap(assetMediaModel: assetMediaModel)
-                                }
-                                .onLongPressGesture(minimumDuration: 0.35) {
-                                    openFullscreen(assetMediaModel: assetMediaModel)
-                                }
-                        }
-                    }
-                }
+    private var sectionedMasonryContent: some View {
+        LazyVStack(alignment: .leading, spacing: cellSpacing) {
+            ForEach(Array(viewModel.sections.enumerated()), id: \.element.id) { sectionIndex, section in
+                sectionedMasonrySection(sectionIndex: sectionIndex, section: section)
+                    .id(section.anchorAssetId)
             }
-            .padding(.horizontal, cellSpacing)
 
-            if shouldShowLoadingCell || viewModel.isStreamingLibraryIndex {
+            if shouldShowLoadingCell {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding()
             }
         }
+        .padding(.horizontal, cellSpacing)
     }
 
-    private var placeholderGridContent: some View {
-        let placeholders = Array(repeating: 0, count: 24)
-        return LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount),
-            spacing: cellSpacing
-        ) {
-            ForEach(placeholders.indices, id: \.self) { _ in
-                MediaGridPlaceholderCell()
+    @ViewBuilder
+    private func sectionedMasonrySection(sectionIndex: Int, section: AlbumDateSection) -> some View {
+        let columns = viewModel.masonryColumns(forSectionAt: sectionIndex, columnsCount: columnsCount)
+        HStack(alignment: .top, spacing: cellSpacing) {
+            ForEach(columns.indices, id: \.self) { columnIndex in
+                LazyVStack(spacing: cellSpacing) {
+                    ForEach(columns[columnIndex]) { assetMediaModel in
+                        cellView(assetMediaModel)
+                            .id(assetMediaModel.id)
+                            .onTapGesture {
+                                onTap(assetMediaModel: assetMediaModel)
+                            }
+                            .onLongPressGesture(minimumDuration: 0.35) {
+                                openFullscreen(assetMediaModel: assetMediaModel)
+                            }
+                    }
+                }
+            }
+        }
+    }
+
+    private var sectionedSquareGridContent: some View {
+        LazyVStack(alignment: .leading, spacing: cellSpacing) {
+            ForEach(Array(viewModel.sections.enumerated()), id: \.element.id) { sectionIndex, section in
+                LazyVGrid(columns: gridColumns, alignment: .leading, spacing: cellSpacing) {
+                    ForEach(viewModel.items(forSectionAt: sectionIndex)) { assetMediaModel in
+                        cellView(assetMediaModel)
+                            .id(assetMediaModel.id)
+                            .onTapGesture {
+                                onTap(assetMediaModel: assetMediaModel)
+                            }
+                            .onLongPressGesture(minimumDuration: 0.35) {
+                                openFullscreen(assetMediaModel: assetMediaModel)
+                            }
+                    }
+                }
+                .id(section.anchorAssetId)
+            }
+
+            if shouldShowLoadingCell {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 80)
             }
         }
         .padding(.horizontal, cellSpacing)
     }
-    
-    // MARK: - Square grid (uniform)
-    
-    private var squareGridContent: some View {
-        LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: cellSpacing), count: columnsCount),
-            alignment: .leading,
-            spacing: cellSpacing
-        ) {
+
+    /// Fallback when sections are not ready yet.
+    private var legacyFlatGridContent: some View {
+        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: cellSpacing) {
             ForEach(viewModel.assetMediaModels) { assetMediaModel in
                 cellView(assetMediaModel)
                     .id(assetMediaModel.id)
@@ -172,12 +185,13 @@ struct AlbumView: View {
                         openFullscreen(assetMediaModel: assetMediaModel)
                     }
             }
-            if shouldShowLoadingCell || viewModel.isStreamingLibraryIndex {
+            if shouldShowLoadingCell {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .frame(height: 80)
             }
         }
+        .padding(.horizontal, cellSpacing)
     }
     
     // MARK: - Subviews
@@ -202,8 +216,6 @@ struct AlbumView: View {
                     columnsCount = 3
                     return
                 }
-                // pinch out (>1) -> bigger cells -> fewer columns
-                // pinch in  (<1) -> smaller cells -> more columns
                 let nextIndex: Int
                 if value > 1.2 {
                     nextIndex = max(currentIndex - 1, 0)
