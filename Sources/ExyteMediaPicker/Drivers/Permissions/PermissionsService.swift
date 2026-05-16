@@ -30,7 +30,6 @@ final class PermissionsService: ObservableObject {
         PHPhotoLibrary.requestAuthorization { status in
             if status == .authorized || status == .limited {
                 MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: .photo)
-                MediaPickerWarmup.prepareLibraryCacheIfNeeded(mediaType: .photoAndVideo)
                 permissionGrantedClosure()
             }
         }

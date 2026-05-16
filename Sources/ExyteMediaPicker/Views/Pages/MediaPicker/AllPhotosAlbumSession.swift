@@ -49,6 +49,10 @@ final class AllPhotosAlbumSession: ObservableObject {
         self?.provider.reload()
       }
   }
+
+  deinit {
+    MediaPickerLifecycle.releaseResourcesAfterPickerDismissed()
+  }
 }
 
 /// Bridges filter loading flag from `BaseMediasProvider` into the session.

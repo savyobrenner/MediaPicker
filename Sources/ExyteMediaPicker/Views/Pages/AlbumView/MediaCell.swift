@@ -12,13 +12,18 @@ import SwiftUI
 import Photos
 
 struct MediaCell: View {
-    
-    @StateObject var viewModel: MediaViewModel
-    
+
+    @StateObject private var viewModel: MediaViewModel
+
     @Environment(\.mediaPickerTheme) private var theme
     @EnvironmentObject private var selectionService: SelectionService
 
     let selectionParamsHolder: SelectionParamsHolder
+
+    init(assetMediaModel: AssetMediaModel, selectionParamsHolder: SelectionParamsHolder) {
+        _viewModel = StateObject(wrappedValue: MediaViewModel(assetMediaModel: assetMediaModel))
+        self.selectionParamsHolder = selectionParamsHolder
+    }
 
     /// Shared by thumbnail clip and selection ring so corners stay aligned.
     private var cellCornerRadius: CGFloat { 10 }

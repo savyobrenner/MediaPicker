@@ -191,7 +191,7 @@ struct AlbumView: View {
     @ViewBuilder
     private func cellView(_ assetMediaModel: AssetMediaModel) -> some View {
         MediaCell(
-            viewModel: MediaViewModel(assetMediaModel: assetMediaModel),
+            assetMediaModel: assetMediaModel,
             selectionParamsHolder: selectionParamsHolder
         )
     }

@@ -8,6 +8,7 @@ import Foundation
 enum AlbumDateSectionBuilder {
 
   /// Groups assets by day (expects newest-first order, same as PhotoKit fetch).
+  /// Sections only store a scroll anchor id — not every asset in the bucket (saves a full duplicate of the library in RAM).
   static func makeSections(from assets: [AssetMediaModel]) -> [AlbumDateSection] {
     let calendar = Calendar.current
     let now = Date()
@@ -21,7 +22,7 @@ enum AlbumDateSectionBuilder {
     monthYearFormatter.locale = Locale(identifier: isPortuguese ? "pt_BR" : "en_US")
     monthYearFormatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
 
-    var bucket: [(key: String, title: String, items: [AssetMediaModel])] = []
+    var sections: [AlbumDateSection] = []
     var lastKey: String?
 
     for asset in assets {
@@ -43,14 +44,12 @@ enum AlbumDateSectionBuilder {
         title = monthYearFormatter.string(from: date).capitalized(with: isPortuguese ? Locale(identifier: "pt_BR") : Locale(identifier: "en_US"))
       }
 
-      if lastKey == key {
-        bucket[bucket.count - 1].items.append(asset)
-      } else {
-        bucket.append((key: key, title: title, items: [asset]))
+      if lastKey != key {
+        sections.append(AlbumDateSection(id: key, title: title, anchorAssetId: asset.id))
         lastKey = key
       }
     }
 
-    return bucket.map { AlbumDateSection(id: $0.key, title: $0.title, items: $0.items) }
+    return sections
   }
 }

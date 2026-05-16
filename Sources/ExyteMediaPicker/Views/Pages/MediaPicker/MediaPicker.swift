@@ -111,6 +111,9 @@ public struct MediaPicker<AlbumSelectionContent: View>: View {
                 viewModel.defaultAlbumsProvider.mediaSelectionType = newValue
                 viewModel.defaultAlbumsProvider.reload()
             }
+            .onDisappear {
+                MediaPickerLifecycle.releaseResourcesAfterPickerDismissed()
+            }
     }
 
     @ViewBuilder

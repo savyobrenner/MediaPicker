@@ -145,7 +145,8 @@ extension PHAsset {
 
         let options = PHImageRequestOptions()
         options.isNetworkAccessAllowed = true
-        options.deliveryMode = .opportunistic
+        options.deliveryMode = .fastFormat
+        options.resizeMode = .fast
 
         return PHCachingImageManager.default().requestImage(
             for: self,
@@ -153,7 +154,8 @@ extension PHAsset {
             contentMode: .aspectFill,
             options: options,
             resultHandler: { image, info in
-                resultClosure(image) // called for every quality approximation
+                if let cancelled = info?[PHImageCancelledKey] as? Bool, cancelled { return }
+                resultClosure(image)
             }
         )
     }

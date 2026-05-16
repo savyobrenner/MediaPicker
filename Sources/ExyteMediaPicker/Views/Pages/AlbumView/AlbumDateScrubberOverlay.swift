@@ -70,7 +70,7 @@ struct AlbumDateScrubberOverlay: View {
         }
 
         guard section.id != lastScrolledSectionId else { return }
-        guard let targetId = section.items.first?.id else { return }
+        let targetId = section.anchorAssetId
 
         let now = CFAbsoluteTimeGetCurrent()
         if now - lastScrollFireTime >= scrollThrottleSeconds {

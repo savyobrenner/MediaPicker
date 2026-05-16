@@ -69,8 +69,8 @@ public enum MediaPickerWarmup {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         guard status == .authorized || status == .limited else { return }
 
+        // Only `.photo` by default — warming `.photoAndVideo` too duplicates the whole index in RAM.
         prepareLibraryCacheIfNeeded(mediaType: .photo)
-        prepareLibraryCacheIfNeeded(mediaType: .photoAndVideo)
     }
 
     static func isWarmingUp(mediaType: MediaSelectionType) -> Bool {

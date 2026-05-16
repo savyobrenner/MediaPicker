@@ -10,7 +10,8 @@ import CoreGraphics
 struct AlbumDateSection: Identifiable, Equatable {
     let id: String
     let title: String
-    let items: [AssetMediaModel]
+    /// First asset in this date bucket — used by the scrubber for `scrollTo` (no per-section asset arrays).
+    let anchorAssetId: String
 }
 
 @MainActor
